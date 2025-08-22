@@ -1,8 +1,11 @@
-import React from 'react';
+// CoursesScreen.tsx
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components/native';
-import { FlatList, Dimensions } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, I18nManager, RefreshControl } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
+
+I18nManager.forceRTL(true);
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 24;
@@ -36,74 +39,132 @@ const CardLabel = styled.Text`
   font-family: 'NotoKufiArabic-Regular';
 `;
 
-const courses = [
-  {
-    id: '1',
-    label: 'البرمجة اللغوية والعقل',
-    icon: 'lightbulb',
-    subCourses: [
-      'دبلوم البرمجة اللغوية العصبية (المستوى الأول)',
-      'ممارس برمجة لغوية عصبية (المستوى الثاني)',
-      'ممارس متقدم في البرمجة اللغوية العصبية (المستوى الثالث)',
-      'البرمجة اللغوية العصبية للأطفال',
-      'تشبيط العقل',
-      'تقنيات الإبداع',
-    ],
-  },
-  {
-    id: '2',
-    label: 'دورات التربية الخاصة',
-    icon: 'accessible-icon',
-    subCourses: [
-      'مدخل إلى التربية الخاصة',
-      'التعامل مع ذوي الاحتياجات الخاصة',
-      'مهارات دمج الأطفال ذوي الإعاقة',
-    ],
-  },
-  {
-    id: '3',
-    label: 'مهارات التواصل ولغة الجسد',
-    icon: 'handshake',
-    subCourses: [
-      'إتقان لغة الجسد',
-      'التأثير في الآخرين بالكلمات والحركة',
-    ],
-  },
-  {
-    id: '4',
-    label: 'الإدارة والموارد البشرية',
-    icon: 'briefcase',
-    subCourses: [
-      'إدارة الأداء',
-      'أساسيات الموارد البشرية',
-    ],
-  },
-  // Add more as needed...
-];
+/* ------------------- API types ------------------- */
+type ApiCourse = {
+  id: number;
+  name: string;
+  name_ar?: string | null;
+  name_en?: string | null;
+  course_head_lines?: string | null; // HTML
+  days?: number | null;
+  hours?: number | null;
+  cost?: number | null;
+  grade?: string | null;
+  active?: number;
+  package_id: number;
+};
 
-const CoursesScreen = () => {
-  const navigation = useNavigation();
+type ApiPackage = {
+  id: number;
+  name: string;
+  name_ar?: string | null;
+  name_en?: string | null;
+  courses_count: number;
+  courses: ApiCourse[];
+};
 
-  const renderItem = ({ item }: { item: typeof courses[0] }) => (
-    <Card onPress={() =>
-      navigation.navigate('SubCourses', {
-        title: item.label,
-        subCourses: item.subCourses || [],
-      })
-    }>
+type SubCourseParam = {
+  id: number;
+  name: string;
+  course_head_lines?: string | null;
+  days?: number | null;
+  hours?: number | null;
+};
+
+const BASE = 'http://tanamitrain.com/tanamiAdmin';
+const PACKAGES_URL = `${BASE}/api/mobile-app/packages-with-courses`;
+
+/* simple icon chooser by keywords (ar/en) */
+const pickIcon = (title: string): string => {
+  const t = title.toLowerCase();
+  if (t.includes('nlp') || t.includes('البرمجة اللغوية') || t.includes('العقل')) return 'lightbulb';
+  if (t.includes('تربية') || t.includes('ذوي الاحتياجات') || t.includes('special')) return 'accessible-icon';
+  if (t.includes('تواصل') || t.includes('جسد') || t.includes('لغة') || t.includes('communication')) return 'handshake';
+  if (t.includes('ادارة') || t.includes('الإدارة') || t.includes('موارد') || t.includes('hr')) return 'briefcase';
+  if (t.includes('ابداع') || t.includes('الإبداع')) return 'magic';
+  return 'layer-group';
+};
+
+const CoursesScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
+
+  const [packages, setPackages] = useState<ApiPackage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchPackages = useCallback(async () => {
+    try {
+      const res = await fetch(PACKAGES_URL);
+      const json: ApiPackage[] = await res.json();
+      setPackages(Array.isArray(json) ? json : []);
+    } catch (e) {
+      Alert.alert('خطأ', 'تعذّر تحميل الحزم. تأكد من الاتصال بالإنترنت.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchPackages();
+  }, [fetchPackages]);
+
+  const data = useMemo(
+    () =>
+      packages.map((p) => ({
+        id: String(p.id),
+        label: (p.name_ar || p.name || p.name_en || '').trim(),
+        icon: pickIcon((p.name_ar || p.name || p.name_en || '')),
+        subCourses: (p.courses || []).map<SubCourseParam>((c) => ({
+          id: c.id,
+          name: (c.name_ar || c.name || c.name_en || '').trim(),
+          course_head_lines: c.course_head_lines || '',
+          days: c.days ?? null,
+          hours: c.hours ?? null,
+        })),
+      })),
+    [packages]
+  );
+
+  const renderItem = ({ item }: { item: (typeof data)[number] }) => (
+    <Card
+      onPress={() =>
+        navigation.navigate('SubCourses', {
+          title: item.label,
+          subCourses: item.subCourses,
+        })
+      }
+    >
       <CardIcon name={item.icon} />
-      <CardLabel>{item.label}</CardLabel>
+      <CardLabel numberOfLines={2}>{item.label}</CardLabel>
     </Card>
   );
+
+  if (loading && !refreshing) {
+    return (
+      <Container>
+        <ActivityIndicator size="large" color="#111" style={{ marginTop: 24 }} />
+      </Container>
+    );
+  }
 
   return (
     <Container>
       <FlatList
-        data={courses}
+        data={data}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={{ paddingBottom: 16 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#111" />}
+        ListEmptyComponent={
+          <CardLabel style={{ color: '#111', marginTop: 16 }}>لا توجد حزم متاحة حالياً</CardLabel>
+        }
       />
     </Container>
   );

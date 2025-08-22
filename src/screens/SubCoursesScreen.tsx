@@ -1,14 +1,36 @@
+// SubCoursesScreen.tsx
 import React, { useRef, useMemo, useCallback, useState } from 'react';
-import { FlatList, Pressable, View, Text, StyleSheet } from 'react-native';
+import { FlatList, Pressable, View, Text, StyleSheet, ScrollView } from 'react-native';
 import styled from 'styled-components/native';
 import { useRoute } from '@react-navigation/native';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+type SubCourse = {
+  id: number;
+  name: string;
+  course_head_lines?: string | null; // HTML
+  days?: number | null;
+  hours?: number | null;
+};
+
+type RouteParams = {
+  title: string;
+  subCourses: SubCourse[];
+};
+
 const Container = styled.View`
   flex: 1;
   background-color: #fff;
   padding: 16px;
+`;
+
+const HeaderTitle = styled.Text`
+  color: #111;
+  font-family: 'NotoKufiArabic-Regular';
+  font-size: 18px;
+  text-align: center;
+  margin-bottom: 8px;
 `;
 
 const CourseBox = styled.View`
@@ -25,36 +47,52 @@ const CourseText = styled.Text`
   text-align: center;
 `;
 
-const SubCoursesScreen = () => {
+// very light HTML → plain text (no extra libs)
+const htmlToText = (html?: string | null) => {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+};
+
+const SubCoursesScreen: React.FC = () => {
   const route = useRoute();
-  const { title, subCourses } = route.params as {
-    title: string;
-    subCourses: string[];
-  };
+  const { title, subCourses } = route.params as RouteParams;
 
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['30%', '60%'], []);
+  const snapPoints = useMemo(() => ['30%', '65%'], []);
 
-  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<SubCourse | null>(null);
 
-  const handleOpenSheet = useCallback((courseTitle: string) => {
-    setSelectedCourse(courseTitle);
-    bottomSheetRef.current?.snapToIndex(1); // open to 60%
+  const handleOpenSheet = useCallback((course: SubCourse) => {
+    setSelectedCourse(course);
+    bottomSheetRef.current?.snapToIndex(1); // open to 65%
   }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Container>
+        <HeaderTitle>{title}</HeaderTitle>
+
         <FlatList
           data={subCourses}
-          keyExtractor={(item, index) => `${item}-${index}`}
+          keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
             <Pressable onPress={() => handleOpenSheet(item)}>
               <CourseBox>
-                <CourseText>{item}</CourseText>
+                <CourseText numberOfLines={2}>{item.name}</CourseText>
               </CourseBox>
             </Pressable>
           )}
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', marginTop: 16 }}>لا توجد دورات ضمن هذه الحزمة</Text>
+          }
         />
       </Container>
 
@@ -66,8 +104,26 @@ const SubCoursesScreen = () => {
         onClose={() => setSelectedCourse(null)}
       >
         <BottomSheetView style={styles.sheetContent}>
-          <Text style={styles.sheetTitle}>{selectedCourse}</Text>
-          <Text style={styles.sheetText}>هنا بعض التفاصيل حول الدورة أو المحتوى الذي اخترته.</Text>
+          <Text style={styles.sheetTitle}>
+            {selectedCourse?.name ?? ''}
+          </Text>
+
+          {!!selectedCourse && (
+            <View style={styles.metaRow}>
+              {selectedCourse.days != null && (
+                <Text style={styles.metaItem}>الأيام: {selectedCourse.days}</Text>
+              )}
+              {selectedCourse.hours != null && (
+                <Text style={styles.metaItem}>الساعات: {selectedCourse.hours}</Text>
+              )}
+            </View>
+          )}
+
+          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator>
+            <Text style={styles.sheetText}>
+              {htmlToText(selectedCourse?.course_head_lines)}
+            </Text>
+          </ScrollView>
         </BottomSheetView>
       </BottomSheet>
     </GestureHandlerRootView>
@@ -81,11 +137,22 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
     marginBottom: 12,
+  },
+  metaItem: {
+    fontSize: 14,
   },
   sheetText: {
     fontSize: 16,
     lineHeight: 22,
+    textAlign: 'right',
   },
 });
 
