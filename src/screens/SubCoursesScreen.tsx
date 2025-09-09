@@ -5,6 +5,7 @@ import styled from 'styled-components/native';
 import { useRoute } from '@react-navigation/native';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import CourseDetailsSheet from './sheets/CourseDetailsSheet';
 
 type SubCourse = {
   id: number;
@@ -21,7 +22,7 @@ type RouteParams = {
 
 const Container = styled.View`
   flex: 1;
-  background-color: #fff;
+  background-color: #eceadf;
   padding: 16px;
 `;
 
@@ -119,11 +120,13 @@ const SubCoursesScreen: React.FC = () => {
             </View>
           )}
 
-          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator>
-            <Text style={styles.sheetText}>
-              {htmlToText(selectedCourse?.course_head_lines)}
-            </Text>
-          </ScrollView>
+          {selectedCourse ? (
+            <CourseDetailsSheet
+              title={""}
+              headLines={selectedCourse.course_head_lines}
+              maxHeight={360}   // so it scrolls nicely inside the sheet
+            />
+          ) : null}
         </BottomSheetView>
       </BottomSheet>
     </GestureHandlerRootView>
@@ -152,7 +155,7 @@ const styles = StyleSheet.create({
   sheetText: {
     fontSize: 16,
     lineHeight: 22,
-    textAlign: 'right',
+
   },
 });
 

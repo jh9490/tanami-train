@@ -19,7 +19,7 @@ const screenWidth = Dimensions.get('window').width;
 
 const Container = styled.View`
   flex: 1;
-  background-color: #fff8e5;
+  background-color: #fff1e2;
   padding: 10px;
 `;
 
@@ -186,7 +186,7 @@ const GalleryScreen: React.FC = () => {
           enableSwipeDown
           backgroundColor="#000"
           loadingRender={() => (
-            <ActivityIndicator size="large" color="#fff" style={{ marginTop: 20 }} />
+            <ActivityIndicator size="large" color="#eceadf" style={{ marginTop: 20 }} />
           )}
           saveToLocalByLongPress={false}
         />

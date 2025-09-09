@@ -15,7 +15,7 @@ const App = () => {
       { fontFamily: 'NotoKufiArabic-Regular' },
     ];
 
-    const timer = setTimeout(() => setShowSplash(false), 7000);
+    const timer = setTimeout(() => setShowSplash(false), 15000);
     return () => clearTimeout(timer);
   }, []);
 

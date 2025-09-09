@@ -16,14 +16,14 @@ const Dot = styled(View)`
   width: 20px;
   height: 20px;
   border-radius: 10px;
-  background-color: #fff;
+  background-color: #eceadf;
   position: absolute;
 `;
 
 const AppName = styled(Animatable.Text)`
   font-size: 28px;
   font-weight: bold;
-  color: #fff;
+  color: #eceadf;
   text-align: center;
   margin-top: 20px;
 `;
@@ -83,7 +83,7 @@ const SplashScreen = () => {
   }, []);
 
   return (
-    <Container colors={['#c9912b', '#ffc546']}>
+    <Container colors={['#0f4f30', '#ffc546']}>
       {showDots && (
         <>
           <Animatable.View ref={dot1Ref}>

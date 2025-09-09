@@ -1,53 +1,186 @@
+// src/navigation/AppNavigator.tsx
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createDrawerNavigator } from '@react-navigation/drawer';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import { I18nManager } from 'react-native';
-// Screens
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+
+/* Providers */
+import { AuthProvider } from '../context/AuthContext'; // ⬅️ change to ../providers/AuthProvider if that's your path
+
+/* Screens */
 import SplashScreen from '../screens/SplashScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CoursesScreen from '../screens/CoursesScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import SubCoursesScreen from '../screens/SubCoursesScreen';
+import MenuScreen from '../screens/menu/MenuScreen';
 import VerifyCertificateScreen from '../screens/VerifyCertificateScreen';
 import ContactUsScreen from '../screens/ContactUsScreen';
 import OurLocationScreen from '../screens/OurLocationScreen';
 
-// Hamburger component
-const HeaderLeftHamburger = () => {
-  const navigation = useNavigation();
-  return (
-    <TouchableOpacity onPress={() => navigation.openDrawer()} 
-       style={{
-      marginRight: 15,
-      transform: [{ scaleX: I18nManager.isRTL ? -1 : 1 }], // ✅ Mirror only the icon if RTL
-    }}>
-      <Icon name="menu" size={28} color="#ffc546" />
-    </TouchableOpacity>
-  );
+/* Auth screens */
+import SignInScreen from '../screens/auth/SignInScreen';
+import SignUpScreen from '../screens/auth/SignUpScreen';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
+import VerifyScreen from '../screens/auth/VerifyScreen';
+
+/* Account/Settings */
+import AccountScreen from '../screens/AccountScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+
+
+/* User Screen */
+import MyNotifications from '../screens/MyNotificationsScreen';
+import MyCourses from '../screens/MyCoursesScreen';
+import CourseTabs from '../screens/CourseTabsScreen';
+/* ===== Types ===== */
+export type RootStackParamList = {
+  Splash: undefined;
+  MainTabs: undefined;
+  SubCourses: { title?: string } | undefined;
+
+  AuthStack: { screen?: keyof AuthStackParamList } | undefined;
+  AccountStack: { screen?: keyof AccountStackParamList } | undefined;
+  UserStack : { screen?: keyof UserStackParamList } | undefined;
+  
 };
 
-const Stack = createStackNavigator();
-const Tab = createBottomTabNavigator();
-const Drawer = createDrawerNavigator();
+export type MainTabParamList = {
+  Home: undefined;
+  Courses: undefined;
+  Gallery: undefined;
+  MenuRoot: undefined;
+};
 
-// Tabs with NO headers (headerShown: false)
-const MainTabs = () => {
-  const navigation = useNavigation();
+export type MenuStackParamList = {
+  MenuScreen: undefined;
+  VerifyCertificate: undefined;
+  ContactUs: undefined;
+  OurLocation: undefined;
+};
 
-  const getHeaderTitle = (routeName: string) => {
-    switch (routeName) {
-      case 'Home':
-        return 'الرئيسية';
-      case 'Courses':
-        return 'الدورات';
-      case 'Gallery':
-        return 'المعرض';
-      default:
-        return 'تنامي';
+export type AuthStackParamList = {
+  SignIn: undefined;
+  SignUp: undefined;
+  ResetPassword: undefined;
+  OtpVerify: { mobile: string; name?: string } | undefined;
+};
+
+export type AccountStackParamList = {
+  Account: undefined;
+  Settings: undefined;
+};
+
+
+export type UserStackParamList = {
+  MyNotifications: undefined;
+  MyCourses: undefined;
+  CourseTabs: { courseId: string; title: string } | undefined;
+};
+
+/* ===== Navigators ===== */
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
+const MenuStackNav = createNativeStackNavigator<MenuStackParamList>();
+const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
+const AccountStackNav = createNativeStackNavigator<AccountStackParamList>();
+const UserStackNav = createNativeStackNavigator<UserStackParamList>();
+/* ===== Shared Header Style ===== */
+const headerCommon = {
+  headerStyle: { backgroundColor: '#0c2a20' },
+  headerTitleStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 18 },
+  headerTintColor: '#cbae82',
+  headerTitleAlign: 'center' as const,
+};
+
+/* ===== Menu stack (for “القائمة” tab) ===== */
+function MenuStack() {
+  return (
+    <MenuStackNav.Navigator screenOptions={headerCommon}>
+      <MenuStackNav.Screen
+        name="MenuScreen"
+        component={MenuScreen}
+        options={{ title: 'القائمة' }}
+      />
+      <MenuStackNav.Screen
+        name="VerifyCertificate"
+        component={VerifyCertificateScreen}
+        options={{ title: 'التحقق من الشهادات' }}
+      />
+      <MenuStackNav.Screen
+        name="ContactUs"
+        component={ContactUsScreen}
+        options={{ title: 'اتصل بنا' }}
+      />
+      <MenuStackNav.Screen
+        name="OurLocation"
+        component={OurLocationScreen}
+        options={{ title: 'موقعنا' }}
+      />
+    </MenuStackNav.Navigator>
+  );
+}
+
+/* ===== Auth stack ===== */
+function AuthStack() {
+  return (
+    <AuthStackNav.Navigator screenOptions={headerCommon}>
+      <AuthStackNav.Screen name="SignIn" component={SignInScreen} options={{ title: 'تسجيل الدخول' }} />
+      <AuthStackNav.Screen name="SignUp" component={SignUpScreen} options={{ title: 'إنشاء حساب' }} />
+      <AuthStackNav.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'إعادة تعيين كلمة المرور' }} />
+      <AuthStackNav.Screen name="OtpVerify" component={VerifyScreen} options={{ title: 'رمز التحقق' }} />
+    </AuthStackNav.Navigator>
+  );
+}
+
+/* ===== Account stack ===== */
+function AccountStack() {
+  return (
+    <AccountStackNav.Navigator screenOptions={headerCommon}>
+      <AccountStackNav.Screen name="Account" component={AccountScreen} options={{ title: 'حسابي' }} />
+      <AccountStackNav.Screen name="Settings" component={SettingsScreen} options={{ title: 'الإعدادات' }} />
+    </AccountStackNav.Navigator>
+  );
+}
+
+
+
+/* ===== User stack ===== */
+
+function UserStack() {
+  return (
+    <UserStackNav.Navigator screenOptions={headerCommon}>
+      <UserStackNav.Screen
+        name="MyNotifications"
+        component={MyNotifications}
+        options={{ title: 'إشعاراتي' }}
+      />
+      <UserStackNav.Screen
+        name="MyCourses"
+        component={MyCourses}
+        options={{ title: 'دوراتي' }}
+      />
+      <UserStackNav.Screen
+        name="CourseTabs"
+        component={CourseTabs}
+        options={({ route }) => ({ title: route.params?.title ?? 'الدورة' })}
+      />
+    </UserStackNav.Navigator>
+  );
+}
+
+
+/* ===== Bottom Tabs ===== */
+function MainTabs() {
+  const getHeaderTitle = (name: keyof MainTabParamList) => {
+    switch (name) {
+      case 'Home': return 'الرئيسية';
+      case 'Courses': return 'الدورات';
+      case 'Gallery': return 'المعرض';
+      case 'MenuRoot': return 'القائمة';
+      default: return 'تنامي';
     }
   };
 
@@ -55,95 +188,80 @@ const MainTabs = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ color, size }) => {
-          let iconName =
-            route.name === 'Home' ? 'home' : route.name === 'Courses' ? 'book' : 'image';
-          return <Icon name={iconName} size={size} color={color} />;
+          const iconName =
+            route.name === 'Home' ? 'home' :
+            route.name === 'Courses' ? 'book' :
+            route.name === 'Gallery' ? 'image' : 'menu';
+          const transform = I18nManager.isRTL ? [{ scaleX: -1 }] : undefined;
+          return <Icon name={iconName} size={size} color={color} style={{ transform }} />;
         },
-        headerShown: true,
-        headerTitle: getHeaderTitle(route.name),
-        headerStyle: { backgroundColor: '#000' },
-        headerTitleStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 18 },
-        headerTintColor: '#ffc546',
-        headerTitleAlign: 'center',
-        headerLeft: () => (
-          <TouchableOpacity onPress={() => navigation.openDrawer()} style={{ marginRight: 15 }}>
-            <Icon name="menu" size={28} color="#ffc546" />
-          </TouchableOpacity>
-        ),
-        headerRight: () => null, // ✅ Remove left hamburger completely
-        tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#ccc',
-          borderTopWidth: 1,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          marginBottom: 5,
-          fontFamily: 'NotoKufiArabic-Bold',
-        },
-        tabBarActiveTintColor: '#ffc546',
+        headerShown: route.name !== 'MenuRoot', // let Menu stack render its own header
+        headerTitle: getHeaderTitle(route.name as keyof MainTabParamList),
+        ...headerCommon,
+        headerLeft: () => null,
+        headerRight: () => null,
+        tabBarStyle: { backgroundColor: '#0c2a20', borderTopColor: '#ccc', borderTopWidth: 1 },
+        tabBarLabelStyle: { fontSize: 12, marginBottom: 5, fontFamily: 'NotoKufiArabic-Bold' },
+        tabBarActiveTintColor: '#cbae82',
         tabBarInactiveTintColor: 'gray',
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'الرئيسية' }} />
       <Tab.Screen name="Courses" component={CoursesScreen} options={{ tabBarLabel: 'الدورات' }} />
       <Tab.Screen name="Gallery" component={GalleryScreen} options={{ tabBarLabel: 'المعرض' }} />
+      <Tab.Screen name="MenuRoot" component={MenuStack} options={{ tabBarLabel: 'القائمة', headerShown: false }} />
     </Tab.Navigator>
   );
-};
+}
+
+/* ===== Root stack (tabs + pushable stacks) ===== */
+function Root() {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      {/* If you later want Splash: set it first, then MainTabs after a flag */}
+      {/* <RootStack.Screen name="Splash" component={SplashScreen} /> */}
+
+      <RootStack.Screen name="MainTabs" component={MainTabs} />
+
+      <RootStack.Screen
+        name="SubCourses"
+        component={SubCoursesScreen}
+        options={{
+          headerShown: true,
+          ...headerCommon,
+          title: 'الدورات الفرعية',
+        }}
+      />
+
+      <RootStack.Screen
+        name="AuthStack"
+        component={AuthStack}
+        options={{ headerShown: false }}
+      />
+
+      <RootStack.Screen
+        name="AccountStack"
+        component={AccountStack}
+        options={{ headerShown: false }}
+      />
 
 
-// Drawer with shared header style and hamburger
-const MainDrawer = () => (
-  <Drawer.Navigator
-    screenOptions={({ route }) => ({
-      drawerType: 'slide',
-      drawerStyle: { backgroundColor: '#fff', width: 250 },
-      drawerLabelStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 16 },
-      headerShown: route.name !== 'الرئيسية', // ✅ Hide header for MainTabs
-      headerStyle: { backgroundColor: '#000' },
-      headerTitleStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 18 },
-      headerTintColor: '#ffc546',
-      headerTitleAlign: 'center',
-      headerRight: () => null,
+      <RootStack.Screen
+        name="UserStack"
+        component={UserStack}
+        options={{ headerShown: false }}
+      />
+    </RootStack.Navigator>
+  );
+}
 
-      // ✅ This line ADDS the hamburger only on the right
-      headerLeft : () =>
-        route.name === 'الرئيسية' ? <HeaderLeftHamburger /> : <HeaderLeftHamburger />,
-
-    })}
-  >
-    <Drawer.Screen name="الرئيسية" component={MainTabs} />
-    <Drawer.Screen name="التحقق من الشهادة" component={VerifyCertificateScreen} options={{ title: 'التحقق من الشهادات' }} />
-    <Drawer.Screen name="اتصل بنا" component={ContactUsScreen} options={{ title: 'اتصل بنا' }} />
-    <Drawer.Screen name="موقعنا" component={OurLocationScreen} options={{ title: 'موقعنا' }} />
-  </Drawer.Navigator>
-);
-
-// App wrapper with splash + stack screens
-const AppNavigator = ({ showSplash }) => (
-  <NavigationContainer>
-    <Stack.Navigator>
-      {showSplash ? (
-        <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
-      ) : (
-        <>
-          <Stack.Screen name="MainApp" component={MainDrawer} options={{ headerShown: false }} />
-          <Stack.Screen
-            name="SubCourses"
-            component={SubCoursesScreen}
-            options={({ route }) => ({
-              title: route.params?.title || 'الدورات الفرعية',
-              headerStyle: { backgroundColor: '#000' },
-              headerTitleStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 18 },
-              headerTintColor: '#ffc546',
-              headerTitleAlign: 'center',
-            })}
-          />
-        </>
-      )}
-    </Stack.Navigator>
-  </NavigationContainer>
-);
-
-export default AppNavigator;
+/* ===== App root with AuthProvider + Navigation ===== */
+export default function AppNavigator() {
+  return (
+    <AuthProvider>
+      <NavigationContainer>
+        <Root />
+      </NavigationContainer>
+    </AuthProvider>
+  );
+}

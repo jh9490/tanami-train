@@ -12,12 +12,12 @@ const CARD_WIDTH = width / 2 - 24;
 
 const Container = styled.View`
   flex: 1;
-  background-color: #c9912b;
+  background-color: #eceadf;
   padding: 16px;
 `;
 
 const Card = styled.TouchableOpacity`
-  background-color: #111;
+  background-color: #eceadf;
   width: ${CARD_WIDTH}px;
   height: 120px;
   border-radius: 12px;
@@ -27,13 +27,13 @@ const Card = styled.TouchableOpacity`
 `;
 
 const CardIcon = styled(Icon)`
-  color: #ffc546;
+  color: #0f4f30;
   font-size: 28px;
   margin-bottom: 8px;
 `;
 
 const CardLabel = styled.Text`
-  color: #ffc546;
+  color: #0f4f30;
   font-size: 14px;
   text-align: center;
   font-family: 'NotoKufiArabic-Regular';
