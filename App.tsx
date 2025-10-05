@@ -1,12 +1,21 @@
+// App.tsx
 import React, { useEffect, useState } from 'react';
 import { Text } from 'react-native';
-import AppNavigator from './src/navigation/AppNavigator';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import SplashScreen from './src/screens/SplashScreen';
+import AppNavigator from './src/navigation/AppNavigator';
+
+import { initNotifications } from './src/services/notifications';
+import messaging from '@react-native-firebase/messaging';
+import { api } from './src/services/api';
+import { getOrCreateDeviceId } from './src/util/deviceId';
+import { useAuth } from './src/context/AuthContext';
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
+  const { user, profile, isAuthenticated } = useAuth();
 
-  // 👇 Global font override for all <Text> elements
+  // --- Disable font scaling globally ---
   useEffect(() => {
     Text.defaultProps = Text.defaultProps || {};
     Text.defaultProps.allowFontScaling = false;
@@ -14,14 +23,63 @@ const App = () => {
       Text.defaultProps.style || {},
       { fontFamily: 'NotoKufiArabic-Regular' },
     ];
-
-    const timer = setTimeout(() => setShowSplash(false), 15000);
-    return () => clearTimeout(timer);
   }, []);
+
+  // --- Notifications setup ---
+  useEffect(() => {
+    console.log(
+      '[Auth] isAuthenticated=',
+      isAuthenticated,
+      ' profileId=',
+      isAuthenticated ? profile?.id : null
+    );
+
+    let cleanup = () => {};
+    if (!showSplash) {
+      (async () => {
+        cleanup = await initNotifications({
+          // fires on first token + any refresh
+          onToken: async (token) => {
+            console.log('FCM token:', token);
+            try {
+              const deviceId = await getOrCreateDeviceId();
+              await api.registerPushToken({
+                profile_id: null, // guest by default — real profileId used later inside notifications.ts
+                device_id: deviceId,
+                platform: 'android',
+                token,
+                app_version: '1.0.1',
+              });
+            } catch (e) {
+              console.log('registerPushToken failed:', e);
+            }
+          },
+          onOpen: (data) => {
+            console.log('Opened from notification:', data);
+            // Example deep link:
+            // if (data.screen === 'CourseTabs' && data.activityId) {
+            //   navRef?.navigate('CourseTabs', { activityId: Number(data.activityId) });
+            // }
+          },
+        });
+
+        try {
+          await messaging().subscribeToTopic('general');
+        } catch (e) {
+          console.log('subscribeToTopic failed:', e);
+        }
+      })();
+    }
+    return () => cleanup();
+  }, [showSplash, isAuthenticated, profile?.id, user?.id]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppNavigator showSplash={showSplash} />
+      {showSplash ? (
+        <SplashScreen onDone={() => setShowSplash(false)} />
+      ) : (
+        <AppNavigator />
+      )}
     </GestureHandlerRootView>
   );
 };

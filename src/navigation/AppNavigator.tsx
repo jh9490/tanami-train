@@ -35,6 +35,7 @@ import SettingsScreen from '../screens/SettingsScreen';
 import MyNotifications from '../screens/MyNotificationsScreen';
 import MyCourses from '../screens/MyCoursesScreen';
 import CourseTabs from '../screens/CourseTabsScreen';
+import MyRegistrationRequests from '../screens/MyRegistrationRequests';
 /* ===== Types ===== */
 export type RootStackParamList = {
   Splash: undefined;
@@ -78,6 +79,8 @@ export type UserStackParamList = {
   MyNotifications: undefined;
   MyCourses: undefined;
   CourseTabs: { courseId: string; title: string } | undefined;
+  MyRegistrationRequests: undefined;
+  VerifyCertificateScreen: undefined;
 };
 
 /* ===== Navigators ===== */
@@ -167,6 +170,16 @@ function UserStack() {
         component={CourseTabs}
         options={({ route }) => ({ title: route.params?.title ?? 'الدورة' })}
       />
+      <UserStackNav.Screen
+        name="MyRegistrationRequests"
+        component={MyRegistrationRequests}
+        options={{ title: 'طلباتي' }}
+      />
+      <UserStackNav.Screen
+        name="VerifyCertificateScreen"
+        component={VerifyCertificateScreen}
+        options={{ title: 'تحقق من شهادة' }}
+      />
     </UserStackNav.Navigator>
   );
 }
@@ -177,7 +190,7 @@ function MainTabs() {
   const getHeaderTitle = (name: keyof MainTabParamList) => {
     switch (name) {
       case 'Home': return 'الرئيسية';
-      case 'Courses': return 'الدورات';
+      case 'Courses': return 'الحقائب';
       case 'Gallery': return 'المعرض';
       case 'MenuRoot': return 'القائمة';
       default: return 'تنامي';
@@ -207,7 +220,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'الرئيسية' }} />
-      <Tab.Screen name="Courses" component={CoursesScreen} options={{ tabBarLabel: 'الدورات' }} />
+      <Tab.Screen name="Courses" component={CoursesScreen} options={{ tabBarLabel: 'الحقائب' }} />
       <Tab.Screen name="Gallery" component={GalleryScreen} options={{ tabBarLabel: 'المعرض' }} />
       <Tab.Screen name="MenuRoot" component={MenuStack} options={{ tabBarLabel: 'القائمة', headerShown: false }} />
     </Tab.Navigator>
@@ -229,7 +242,7 @@ function Root() {
         options={{
           headerShown: true,
           ...headerCommon,
-          title: 'الدورات الفرعية',
+          title: 'الدورات',
         }}
       />
 

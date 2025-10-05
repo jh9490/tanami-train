@@ -16,19 +16,21 @@ const Dot = styled(View)`
   width: 20px;
   height: 20px;
   border-radius: 10px;
-  background-color: #eceadf;
+  background-color: #0f4f30;
   position: absolute;
 `;
 
 const AppName = styled(Animatable.Text)`
   font-size: 28px;
   font-weight: bold;
-  color: #eceadf;
+  color: #0f4f30;
   text-align: center;
   margin-top: 20px;
 `;
 
-const SplashScreen = () => {
+type Props = { onDone?: () => void };
+
+const SplashScreen: React.FC<Props> = ({ onDone }) => {
   const dot1Ref = useRef<Animatable.View & View>(null);
   const dot2Ref = useRef<Animatable.View & View>(null);
   const dot3Ref = useRef<Animatable.View & View>(null);
@@ -38,52 +40,34 @@ const SplashScreen = () => {
   const [showDots, setShowDots] = useState(true);
   const [showLogo, setShowLogo] = useState(false);
 
+
   useEffect(() => {
     const animateDots = async () => {
       await Promise.all([
-        dot1Ref.current?.animate(
-          {
-            0: { top: -50, left: width * 0.2, opacity: 1 },
-            1: { top: centerY, left: centerX, opacity: 0 },
-          },
-          1500
-        ),
-        dot2Ref.current?.animate(
-          {
-            0: { top: -80, left: width * 0.7, opacity: 1 },
-            1: { top: centerY, left: centerX, opacity: 0 },
-          },
-          1500
-        ),
-        dot3Ref.current?.animate(
-          {
-            0: { top: -100, left: width * 0.45, opacity: 1 },
-            1: { top: centerY, left: centerX, opacity: 0 },
-          },
-          1500
-        ),
+        dot1Ref.current?.animate({ 0:{ top:-50, left:width*0.2, opacity:1 }, 1:{ top:centerY, left:centerX, opacity:0 }}, 3000),
+        dot2Ref.current?.animate({ 0:{ top:-80, left:width*0.7, opacity:1 }, 1:{ top:centerY, left:centerX, opacity:0 }}, 3000),
+        dot3Ref.current?.animate({ 0:{ top:-100, left:width*0.45, opacity:1 }, 1:{ top:centerY, left:centerX, opacity:0 }}, 3000),
       ]);
 
       setShowDots(false);
       setShowLogo(true);
 
       await logoRef.current?.animate(
-        {
-          0: { scale: 0.5, opacity: 0 },
-          0.6: { scale: 1, opacity: 1 },
-          1: { scale: 1.2 },
-        },
-        2000
+        { 0:{ scale:0.7, opacity:0 }, 0.6:{ scale:1.6, opacity:1 }, 1:{ scale:1.7} },
+      3000
       );
 
-      appNameRef.current?.fadeIn(1000);
+      await appNameRef.current?.fadeIn?.(600);
+      //logoRef.current?.pulse?.(3000);
+      // signal App to hide splash  ff
+      onDone?.();
     };
 
     animateDots();
-  }, []);
+  }, [onDone]);
 
   return (
-    <Container colors={['#0f4f30', '#ffc546']}>
+    <Container colors={['#eceadf', '#eceadf']}>
       {showDots && (
         <>
           <Animatable.View ref={dot1Ref}>
@@ -109,7 +93,7 @@ const SplashScreen = () => {
         >
           <Animatable.View ref={logoRef}>
             <Image
-              source={require('../../logo1.png')}
+              source={require('../../logo2.png')}
               style={{ width: 200, height: 200, resizeMode: 'contain' }}
             />
           </Animatable.View>

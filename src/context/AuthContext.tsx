@@ -2,7 +2,16 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import messaging from '@react-native-firebase/messaging';
 import { api } from '../services/api';
+import { getOrCreateDeviceId } from '../util/deviceId';
+
+// ⬇️ NEW: import your storage helpers for profile id
+import {
+  getStoredProfileId,
+  setStoredProfileId,
+  clearStoredProfileId,
+} from '../storage/authStorage';
 
 type User = {
   id: number;
@@ -44,7 +53,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // boot: load token, then /me and /profile
+  /** Register this device/token with backend for a specific profile (or null) */
+  const registerFcmForProfile = async (profileId: number | null) => {
+    try {
+      await messaging().registerDeviceForRemoteMessages();
+      const fcm = await messaging().getToken();
+      const deviceId = await getOrCreateDeviceId();
+      await api.registerPushToken({
+        profile_id: profileId, // null if guest
+        device_id: deviceId,
+        platform: 'android',
+        token: fcm,
+        app_version: '1.0.1',
+      });
+    } catch (e) {
+      console.log('❌ FCM register error:', e);
+    }
+  };
+
+  // ---- helpers to keep storage in sync ----
+  const persistToken = async (t: string | null) => {
+    setToken(t);
+    if (t) await AsyncStorage.setItem(TOKEN_KEY, t);
+    else await AsyncStorage.removeItem(TOKEN_KEY);
+  };
+
+  const writeProfileIdToStorage = async (p?: Profile | null) => {
+    const pid = p?.id ?? null;
+    if (pid != null) {
+      await setStoredProfileId(pid);
+    } else {
+      await clearStoredProfileId();
+    }
+  };
+
+  /** fetch profile and also return it, while syncing storage */
+  const fetchProfileSafe = async (t: string): Promise<Profile | null> => {
+    try {
+      const p = await api.getProfile(t);
+      const prof = p.profile ?? null;
+      setProfile(prof);
+      await writeProfileIdToStorage(prof); // ⬅️ keep storage in sync
+      return prof;
+    } catch {
+      setProfile(null);
+      await clearStoredProfileId(); // ⬅️ remove stale id if any
+      return null;
+    }
+  };
+
+  // boot: load token, then /me and /profile, then register FCM if logged in
   useEffect(() => {
     (async () => {
       try {
@@ -55,12 +113,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const me = await api.me(t);
         setUser(me.user as User);
 
+        let prof: Profile | null = null;
         try {
           const p = await api.getProfile(t);
-          setProfile(p.profile ?? null);
+          prof = p.profile ?? null;
+          setProfile(prof);
+          await writeProfileIdToStorage(prof); // ⬅️ store profile id on boot
         } catch {
           setProfile(null);
+          await clearStoredProfileId();
         }
+
+        const profileId = prof?.id ?? null;
+        if (profileId) await registerFcmForProfile(profileId);
       } catch {
         // ignore
       } finally {
@@ -68,12 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     })();
   }, []);
-
-  const persistToken = async (t: string | null) => {
-    setToken(t);
-    if (t) await AsyncStorage.setItem(TOKEN_KEY, t);
-    else await AsyncStorage.removeItem(TOKEN_KEY);
-  };
 
   const signUp = async (mobile: string, password: string, email?: string) => {
     try {
@@ -85,21 +144,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const fetchProfileSafe = async (t: string) => {
-    try {
-      const p = await api.getProfile(t);
-      setProfile(p.profile ?? null);
-    } catch {
-      setProfile(null);
-    }
-  };
-
   const verifyOtp = async (mobile: string, code: string) => {
     try {
       const res = await api.verify(mobile, code);
       await persistToken(res.access_token);
       setUser(res.user as User);
-      await fetchProfileSafe(res.access_token);
+
+      const prof = await fetchProfileSafe(res.access_token); // ⬅️ writes storage inside
+      const profileId = prof?.id ?? null;
+
+      // register after verification (user is now logged in)
+      await registerFcmForProfile(profileId ?? null);
     } catch (e: any) {
       Alert.alert('خطأ', mapError(e.message));
       throw e;
@@ -111,7 +166,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await api.login(mobile, password);
       await persistToken(res.access_token);
       setUser(res.user as User);
-      await fetchProfileSafe(res.access_token);
+
+      const prof = await fetchProfileSafe(res.access_token); // ⬅️ writes storage inside
+      const profileId = prof?.id ?? null;
+
+      // register after login
+      await registerFcmForProfile(profileId ?? null);
     } catch (e: any) {
       Alert.alert('خطأ', mapError(e.message));
       throw e;
@@ -127,6 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await persistToken(null);
       setUser(null);
       setProfile(null);
+      await clearStoredProfileId(); // ⬅️ remove profile id for ACK readers
+      // optional: keep guest registration handled in App.tsx
     }
   };
 
@@ -139,13 +201,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await persistToken(null);
       setUser(null);
       setProfile(null);
+      await clearStoredProfileId();
     }
   };
 
   const refreshProfile = async () => {
     if (!token) return;
-    await fetchProfileSafe(token);
+    await fetchProfileSafe(token); // ⬅️ keeps storage aligned as well
   };
+
+  // re-register when FCM token refreshes (if logged in)
+  useEffect(() => {
+    const unsub = messaging().onTokenRefresh(async (newToken) => {
+      try {
+        const deviceId = await getOrCreateDeviceId();
+        const profileId = profile?.id ?? null;
+        await api.registerPushToken({
+          profile_id: profileId ?? null,
+          device_id: deviceId,
+          platform: 'android',
+          token: newToken,
+          app_version: '1.0.1',
+        });
+      } catch (e) {
+        console.log('onTokenRefresh register error:', e);
+      }
+    });
+    return () => unsub();
+  }, [user?.id, profile?.id]);
 
   const displayName =
     (profile?.fullname_ar && profile.fullname_ar.trim() !== '' ? profile.fullname_ar : null) ??

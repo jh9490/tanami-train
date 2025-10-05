@@ -1,0 +1,4 @@
+<resources>
+    <!-- add if missing -->
+    <color name="notification_color">#0F4F30</color>
+</resources>

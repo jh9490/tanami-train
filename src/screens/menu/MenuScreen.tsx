@@ -24,7 +24,7 @@ const Row = ({
     <Icon
       name={icon}
       size={22}
-      color={danger ? '#d9534f' : '#ffc546'}
+      color={danger ? '#d9534f' : '#0f4f30'}
       style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
     />
     <Text style={[styles.rowText, danger && styles.rowTextDanger]}>{title}</Text>

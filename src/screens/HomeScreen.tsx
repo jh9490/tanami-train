@@ -12,18 +12,19 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import styled from 'styled-components/native';
 import Carousel from 'react-native-reanimated-carousel';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import CourseDetailsSheet from './sheets/CourseDetailsSheet';
+import PlaceholderPoster from './components/PlaceholderPoster';
+import CourseDialog, { CourseLite } from './components/CourseDialog'; // ✅ reusable dialog
 
 I18nManager.forceRTL(true);
 
@@ -33,13 +34,7 @@ const PAGE_PADDING = 12;
 const VISIBLE_WIDTH = Math.round(SCREEN_WIDTH * 0.84);  // poster width (shows neighbors)
 const POSTER_RATIO = 3 / 4;                             // width : height (tall flyers)
 const POSTER_HEIGHT = Math.round(VISIBLE_WIDTH / POSTER_RATIO);
-
-type CourseLite = {
-  id: string;
-  title: string;
-  image: string;
-  headLines: string;
-};
+const GRID_GAP = 10;
 
 const BASE = 'http://tanamitrain.com/tanamiAdmin';
 const SLIDERS_URL = `${BASE}/api/mobile-app/sliders`;
@@ -88,11 +83,23 @@ const AuthSubtitle = styled.Text`
   font-family: 'NotoKufiArabic-Regular';
 `;
 
-const ActionsRow = styled.View`
-  flex-direction: row;
+const GridItemWrap = styled.TouchableOpacity`
+  background-color: #fff1e2;
+  border-radius: 12px;
+  padding-vertical: 16px;
+  align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin-top: 12px;
+  border-width: 1px;
+  border-color: #f0e4c9;
+  flex: 1;
+  margin: 6px;
+`;
+
+const GridItemLabel = styled.Text`
+  margin-top: 8px;
+  color: #111;
+  font-family: 'NotoKufiArabic-Bold';
+  font-size: 12px;
 `;
 
 const PrimaryBtn = styled.TouchableOpacity`
@@ -107,21 +114,7 @@ const PrimaryText = styled.Text`
   font-size: 13px;
   font-family: 'NotoKufiArabic-Bold';
 `;
-const OutlineBtn = styled.TouchableOpacity`
-  background: transparent;
-  border: 1px solid #0f4f30;
-  padding: 10px 16px;
-  border-radius: 10px;
-  min-width: 130px;
-  align-items: center;
-`;
-const OutlineText = styled.Text`
-  color: #0f4f30;
-  font-size: 13px;
-  font-family: 'NotoKufiArabic-Bold';
-`;
 
-/* --- Sticky header for courses (title + segmented pill) --- */
 const StickyWrap = styled.View`
   background-color: #fff1e2;
   padding: 6px ${PAGE_PADDING}px 0;
@@ -134,9 +127,10 @@ const SectionTitle = styled.Text`
   color: #0f4f30;
   font-family: 'NotoKufiArabic-Bold';
   margin-bottom: 6px;
+  text-align: center;
 `;
 
-/* Segmented control */
+/* Segmented */
 const Segmented = styled.View`
   align-self: center;
   background: #eee;
@@ -157,28 +151,37 @@ const SegText = styled.Text<{ active: boolean }>`
   color: ${({ active }) => (active ? '#eceadf' : '#333')};
 `;
 
-/* posters */
-const Section = styled.View`
-  padding: 0 ${PAGE_PADDING}px;
-  margin-top: -8px;
+/* posters – grid items */
+const GridWrap = styled.View`
+  padding: 6px ${PAGE_PADDING}px 0;
 `;
-const PosterStage = styled.TouchableOpacity`
-  width: ${VISIBLE_WIDTH}px;
-  height: ${POSTER_HEIGHT}px;
+const GridRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: ${GRID_GAP}px;
+`;
+const Card = styled.TouchableOpacity<{ w: number; h: number }>`
+  width: ${({ w }) => w}px;
+  height: ${({ h }) => h}px;
   border-radius: 16px;
   overflow: hidden;
-  background-color: transparent;
+  background: #f6efe6;
+  position: relative;
 `;
-const PosterImage = styled.Image`
-  width: 100%;
-  height: 100%;
+const CardTitle = styled.Text`
+  flex: 1;
+  text-align: center;
+  text-align-vertical: center;
+  padding: 10px;
+  font-family: 'NotoKufiArabic-Bold';
+  color: #0f4f30;
 `;
 
 /* social */
 const SocialSection = styled.View`
   margin-top: 24px;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: 12px;
 `;
 const SocialTitle = styled.Text`
   font-size: 16px;
@@ -190,15 +193,19 @@ const IconRow = styled.View`
   flex-direction: row;
   justify-content: center;
 `;
-
 const SocialIcon = styled.TouchableOpacity`
   width: 48px;
   height: 48px;
-  border-radius: 24px;   /* exactly half of width/height → perfect circle */
+  border-radius: 24px;
   background-color: #0f4f30;
   justify-content: center;
   align-items: center;
   margin: 0 8px;
+`;
+
+const Section = styled.View`
+  padding: 0 ${PAGE_PADDING}px;
+  margin-top: -8px;
 `;
 
 /* ===== utils ===== */
@@ -216,8 +223,6 @@ const isCurrentByDate = (start: string, end?: string, live?: boolean) => {
   }
 };
 
-
-
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'current' | 'upcoming'>('current');
   const [loading, setLoading] = useState(true);
@@ -228,14 +233,15 @@ export default function HomeScreen() {
     upcoming: [],
   });
 
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['30%', '65%'], []);
+  // ✅ NEW: use shared dialog
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseLite | null>(null);
+
   const { width: windowWidth } = useWindowDimensions();
 
   // Navigation + Auth
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isAuthenticated, displayName } = useAuth();
+  const { isAuthenticated, displayName, token } = useAuth(); // ← token
 
   const openLinkSafe = useCallback(async (url: string) => {
     try {
@@ -278,8 +284,15 @@ export default function HomeScreen() {
         const item: CourseLite = {
           id: String(a.id),
           title: (a.course_name || '').toString().trim() || '—',
-          image: a.image_url,
+          image: a.image_url ?? null,
           headLines: a.course?.course_head_lines || '',
+          nameAr: a.course?.name_ar ?? null,
+          days: a.course?.days ?? null,
+          hours: a.course?.hours ?? null,
+          date: a.date ?? null,
+          endDate: a.end_date ?? null,
+          live: !!a.live,
+          cost: a.course?.cost ?? null,
         };
         (bucket === 'current' ? current : upcoming).push(item);
       });
@@ -303,29 +316,13 @@ export default function HomeScreen() {
     fetchAll();
   }, [fetchAll]);
 
-
   const GridItem = ({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      style={{
-        backgroundColor: '#fff1e2',
-        borderRadius: 12,
-        paddingVertical: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#f0e4c9',
-        flex: 1,
-        margin: 6,
-      }}
-    >
+    <GridItemWrap onPress={onPress} activeOpacity={0.8}>
       <MaterialIcon name={icon} size={28} color="#0f4f30" />
-      <Text style={{ marginTop: 8, color: '#111', fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 }}>{label}</Text>
-    </TouchableOpacity>
+      <GridItemLabel>{label}</GridItemLabel>
+    </GridItemWrap>
   );
 
-  /* ---- Auth Section ---- */
   /* ---- Auth Section ---- */
   const AuthSection = useCallback(() => {
     if (isAuthenticated) {
@@ -359,6 +356,18 @@ export default function HomeScreen() {
               onPress={() => navigation.navigate('UserStack', { screen: 'MyCourses' })}
             />
           </View>
+          <View style={{ flexDirection: 'row' }}>
+            <GridItem
+              icon="how-to-reg"
+              label="طلبات التسجيل"
+              onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+            />
+            <GridItem
+              icon="verified"
+              label="تحقق من شهادة"
+              onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
+            />
+          </View>
         </AuthCard>
       );
     }
@@ -368,7 +377,6 @@ export default function HomeScreen() {
         <AuthTitle>سجّل دخولك الآن</AuthTitle>
         <AuthSubtitle>للوصول إلى جميع المميزات</AuthSubtitle>
 
-        {/* Centered login button */}
         <PrimaryBtn
           style={{ alignSelf: 'center', marginTop: 16 }}
           onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
@@ -376,12 +384,11 @@ export default function HomeScreen() {
           <PrimaryText>تسجيل الدخول</PrimaryText>
         </PrimaryBtn>
 
-        {/* Inline sign-up link */}
         <Text
           style={{
             marginTop: 12,
             fontSize: 13,
-            color: '#0066cc',
+            color: '#988561',
             fontFamily: 'NotoKufiArabic-Bold',
             textAlign: 'center',
           }}
@@ -392,7 +399,6 @@ export default function HomeScreen() {
       </AuthCard>
     );
   }, [isAuthenticated, displayName, navigation]);
-
 
   /* ---- Header (slider + AuthSection) ---- */
   const HeaderBlock = useCallback(
@@ -406,6 +412,11 @@ export default function HomeScreen() {
             loop
             data={sliderItems}
             scrollAnimationDuration={1000}
+            onConfigurePanGesture={(g) => {
+              'worklet';
+              g.activeOffsetX([-20, 20]); // horizontal intent only
+              g.failOffsetY([-10, 10]);   // vertical first → let ScrollView handle
+            }}
             renderItem={({ item }) => (
               <SlideTouchable onPress={() => item.link && openLinkSafe(item.link!)}>
                 <SlideImage source={{ uri: item.image }} resizeMode="cover" />
@@ -425,7 +436,7 @@ export default function HomeScreen() {
   /* ---- Sticky Segmented (title + pill) ---- */
   const SegHeader = () => (
     <StickyWrap>
-      <SectionTitle>الدورات</SectionTitle>
+      <SectionTitle>يحدث في تنامي</SectionTitle>
       <Segmented>
         <SegItem active={activeTab === 'current'} onPress={() => setActiveTab('current')}>
           <SegText active={activeTab === 'current'}>الحالية ({courses.current.length})</SegText>
@@ -437,9 +448,14 @@ export default function HomeScreen() {
     </StickyWrap>
   );
 
-  /* ---- Courses carousel ---- */
-  const CoursesCarousel = () => {
+  /* ---- GRID of posters ---- */
+  const CoursesGrid = () => {
     const data = courses[activeTab];
+    const columns = windowWidth >= 420 ? 2 : 2;
+    const totalGaps = (columns - 1) * GRID_GAP;
+    const cardW = Math.floor((windowWidth - PAGE_PADDING * 2 - totalGaps) / columns);
+    const cardH = Math.round(cardW / POSTER_RATIO);
+
     if (loading) return <ActivityIndicator size="large" style={{ marginVertical: 12 }} />;
     if (!data.length)
       return (
@@ -448,10 +464,101 @@ export default function HomeScreen() {
         </Text>
       );
 
+    // chunk to rows
+    const rows: CourseLite[][] = [];
+    for (let i = 0; i < data.length; i += columns) rows.push(data.slice(i, i + columns));
+
+    return (
+      <GridWrap>
+        {rows.map((row, idx) => (
+          <GridRow key={`r-${idx}`}>
+            {row.map((item) => (
+              <Card
+                key={item.id}
+                w={cardW}
+                h={cardH}
+                activeOpacity={0.9}
+                onPress={() => {
+                  setSelectedCourse(item);
+                  setDetailsOpen(true);
+                }}
+              >
+                {item.image ? (
+                  <Image
+                    source={{ uri: item.image }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <PlaceholderPoster width={cardW} height={cardH} />
+                )}
+
+                {/* title overlay */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    paddingVertical: 6,
+                    paddingHorizontal: 8,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    zIndex: 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#fff',
+                      fontFamily: 'NotoKufiArabic-Bold',
+                      fontSize: 12,
+                      textAlign: 'center',
+                    }}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {item.nameAr || item.title || '—'}
+                  </Text>
+                </View>
+              </Card>
+            ))}
+            {row.length === 1 && columns === 2 ? <View style={{ width: cardW }} /> : null}
+          </GridRow>
+        ))}
+      </GridWrap>
+    );
+  };
+
+  /* ---- Social above END carousel ---- */
+  const FooterSocial = useCallback(
+    () => (
+      <SocialSection>
+        <SocialTitle>تابعنا على مواقع التواصل</SocialTitle>
+        <IconRow>
+          <SocialIcon onPress={() => openLinkSafe('https://www.facebook.com/tanami.train')}>
+            <Icon name="facebook" size={24} color="#eceadf" />
+          </SocialIcon>
+          <SocialIcon onPress={() => openLinkSafe('https://www.instagram.com/tanami.train')}>
+            <Icon name="instagram" size={24} color="#eceadf" />
+          </SocialIcon>
+          <SocialIcon onPress={() => openLinkSafe('https://whatsapp.com/channel/0029VaAySIQ84OmFIvyBNK1Y')}>
+            <Icon name="whatsapp" size={24} color="#eceadf" />
+          </SocialIcon>
+        </IconRow>
+      </SocialSection>
+    ),
+    [openLinkSafe]
+  );
+
+  /* ---- Posters carousel at the END ---- */
+  const EndPostersCarousel = () => {
+    const data = courses[activeTab];
+    if (!data.length) return null;
+
     return (
       <Section>
         <Carousel
-          style={{ alignSelf: 'center', marginTop: 0 }}
+          style={{ alignSelf: 'center', marginTop: 6 }}
           width={VISIBLE_WIDTH}
           height={POSTER_HEIGHT}
           data={data}
@@ -463,121 +570,65 @@ export default function HomeScreen() {
             parallaxAdjacentItemScale: 0.84,
             parallaxScrollingOffset: 52,
           }}
-          panGestureHandlerProps={{ activeOffsetX: [-10, 10] }}
+          onConfigurePanGesture={(g) => {
+            'worklet';
+            g.activeOffsetX([-20, 20]);
+            g.failOffsetY([-10, 10]);
+          }}
           renderItem={({ item }) => (
-            <PosterStage
+            <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => {
                 setSelectedCourse(item);
-                bottomSheetRef.current?.snapToIndex(1);
+                setDetailsOpen(true);
+              }}
+              style={{
+                width: VISIBLE_WIDTH,
+                height: POSTER_HEIGHT,
+                borderRadius: 16,
+                overflow: 'hidden',
+                backgroundColor: 'transparent',
               }}
             >
-              <PosterImage source={{ uri: item.image }} resizeMode="contain" />
-            </PosterStage>
+              {item.image ? (
+                <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+              ) : (
+                <View style={{ flex: 1, backgroundColor: '#eceadf', justifyContent: 'center' }}>
+                  <CardTitle>{item.nameAr || item.title || '—'}</CardTitle>
+                </View>
+              )}
+            </TouchableOpacity>
           )}
         />
       </Section>
     );
   };
 
-  const Footer = useCallback(
-    () => (
-      <SocialSection>
-        <SocialTitle>تابعنا على مواقع التواصل</SocialTitle>
-        <IconRow>
-          {/* Facebook */}
-          <SocialIcon onPress={() => openLinkSafe('https://www.facebook.com/tanami.train')}>
-            <Icon name="facebook" size={24} color="#eceadf" />
-          </SocialIcon>
-
-          {/* Instagram */}
-          <SocialIcon onPress={() => openLinkSafe('https://www.instagram.com/tanami.train')}>
-            <Icon name="instagram" size={24} color="#eceadf" />
-          </SocialIcon>
-
-          {/* WhatsApp channel */}
-          <SocialIcon onPress={() => openLinkSafe('https://whatsapp.com/channel/0029VaAySIQ84OmFIvyBNK1Y')}>
-            <Icon name="whatsapp" size={24} color="#eceadf" />
-          </SocialIcon>
-        </IconRow>
-      </SocialSection>
-    ),
-    [openLinkSafe]
-  );
-
-
-  // Turn HTML-ish headlines into clean bullet lines
-  const cleanToBullets = (raw?: string | null): string[] => {
-    if (!raw) return [];
-
-    let s = String(raw);
-
-    // Normalize common HTML → plain text
-    s = s
-      .replace(/<\s*br\s*\/?>/gi, '\n')
-      .replace(/<\/\s*li\s*>/gi, '\n')
-      .replace(/<\s*li[^>]*>/gi, '- ')         // keep bullet indicator
-      .replace(/<\s*\/?(ul|ol|p|div)[^>]*>/gi, '\n')
-      .replace(/&nbsp;?/gi, ' ')
-      .replace(/&amp;/gi, '&')
-      .replace(/&quot;/gi, '"')
-      .replace(/&#39;/gi, "'")
-      .replace(/&lt;/gi, '<')
-      .replace(/&gt;/gi, '>')
-      .replace(/<[^>]*>/g, '');                 // strip any remaining tags
-
-    // Unify separators -> newlines
-    s = s
-      .replace(/[;•·]+/g, '\n')                 // many feeds use ; or •
-      .replace(/\u00A0/g, ' ')                  // non-breaking space
-      .replace(/\r/g, '')
-      .replace(/\n{2,}/g, '\n')                 // collapse extra newlines
-      .trim();
-
-    // Split to lines; accept lines that have text
-    const lines = s.split('\n')
-      .map(l => l.replace(/^\s*[-–*]\s*/, ''))  // remove leading dashes if present
-      .map(l => l.trim())
-      .filter(l => l.length > 0);
-
-    return lines;
-  };
-
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Screen>
-        {/* stickyHeaderIndices={[1]} -> child index #1 sticks (SegHeader) */}
         <ScrollView
           stickyHeaderIndices={[1]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl enabled={false} refreshing={false} onRefresh={() => { }} />}
           contentContainerStyle={{ paddingBottom: 32 }}
         >
           <HeaderBlock />
           <SegHeader />
-          <CoursesCarousel />
-          <Footer />
+          <CoursesGrid />
+
+          {/* Social icons ABOVE the end carousel */}
+          <FooterSocial />
         </ScrollView>
       </Screen>
 
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        onClose={() => setSelectedCourse(null)}
-      >
-        <BottomSheetView style={{ paddingVertical: 8 }}>
-          {selectedCourse ? (
-            <CourseDetailsSheet
-              title={selectedCourse.title}
-              headLines={selectedCourse.headLines}
-              maxHeight={360}   // so it scrolls nicely inside the sheet
-            />
-          ) : null}
-        </BottomSheetView>
-      </BottomSheet>
-
+      {/* ✅ Shared dialog used here */}
+      <CourseDialog
+        visible={detailsOpen}
+        course={selectedCourse}
+        onClose={() => setDetailsOpen(false)}
+        isAuthenticated={isAuthenticated}
+        token={token}
+      />
     </GestureHandlerRootView>
   );
 }

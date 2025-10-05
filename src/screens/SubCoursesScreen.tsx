@@ -1,11 +1,10 @@
-// SubCoursesScreen.tsx
-import React, { useRef, useMemo, useCallback, useState } from 'react';
-import { FlatList, Pressable, View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { FlatList, Pressable, View, Text, StyleSheet } from 'react-native';
 import styled from 'styled-components/native';
 import { useRoute } from '@react-navigation/native';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import CourseDetailsSheet from './sheets/CourseDetailsSheet';
+import CourseDialog, { CourseLite } from './components/CourseDialog';
+import { useAuth } from '../context/AuthContext';
 
 type SubCourse = {
   id: number;
@@ -27,7 +26,7 @@ const Container = styled.View`
 `;
 
 const HeaderTitle = styled.Text`
-  color: #111;
+  color: #0c2a20;
   font-family: 'NotoKufiArabic-Regular';
   font-size: 18px;
   text-align: center;
@@ -35,45 +34,46 @@ const HeaderTitle = styled.Text`
 `;
 
 const CourseBox = styled.View`
-  background-color: #111;
+  background-color: #0c2a20;
   border-radius: 12px;
   padding: 12px;
   margin: 8px 0;
 `;
 
 const CourseText = styled.Text`
-  color: #ffc546;
+  color: #cbae82;
   font-family: 'NotoKufiArabic-Regular';
   font-size: 16px;
   text-align: center;
 `;
 
-// very light HTML → plain text (no extra libs)
-const htmlToText = (html?: string | null) => {
-  if (!html) return '';
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
-};
+// Map SubCourse → CourseLite for the dialog
+const toCourseLite = (s: SubCourse): CourseLite => ({
+  id: String(s.id),
+  title: s.name || '—',
+  image: null,
+  headLines: s.course_head_lines || '',
+  nameAr: s.name || null,
+  days: s.days ?? null,
+  hours: s.hours ?? null,
+  date: null,
+  endDate: null,
+  live: null,
+  cost: null,
+});
 
 const SubCoursesScreen: React.FC = () => {
   const route = useRoute();
   const { title, subCourses } = route.params as RouteParams;
 
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['30%', '65%'], []);
+  const { token, isAuthenticated } = useAuth();
 
-  const [selectedCourse, setSelectedCourse] = useState<SubCourse | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selected, setSelected] = useState<CourseLite | null>(null);
 
-  const handleOpenSheet = useCallback((course: SubCourse) => {
-    setSelectedCourse(course);
-    bottomSheetRef.current?.snapToIndex(1); // open to 65%
+  const openDetails = useCallback((s: SubCourse) => {
+    setSelected(toCourseLite(s));
+    setDialogOpen(true);
   }, []);
 
   return (
@@ -85,7 +85,7 @@ const SubCoursesScreen: React.FC = () => {
           data={subCourses}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <Pressable onPress={() => handleOpenSheet(item)}>
+            <Pressable onPress={() => openDetails(item)}>
               <CourseBox>
                 <CourseText numberOfLines={2}>{item.name}</CourseText>
               </CourseBox>
@@ -94,69 +94,25 @@ const SubCoursesScreen: React.FC = () => {
           ListEmptyComponent={
             <Text style={{ textAlign: 'center', marginTop: 16 }}>لا توجد دورات ضمن هذه الحزمة</Text>
           }
+          contentContainerStyle={{ paddingBottom: 24 }}
         />
       </Container>
 
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        onClose={() => setSelectedCourse(null)}
-      >
-        <BottomSheetView style={styles.sheetContent}>
-          <Text style={styles.sheetTitle}>
-            {selectedCourse?.name ?? ''}
-          </Text>
-
-          {!!selectedCourse && (
-            <View style={styles.metaRow}>
-              {selectedCourse.days != null && (
-                <Text style={styles.metaItem}>الأيام: {selectedCourse.days}</Text>
-              )}
-              {selectedCourse.hours != null && (
-                <Text style={styles.metaItem}>الساعات: {selectedCourse.hours}</Text>
-              )}
-            </View>
-          )}
-
-          {selectedCourse ? (
-            <CourseDetailsSheet
-              title={""}
-              headLines={selectedCourse.course_head_lines}
-              maxHeight={360}   // so it scrolls nicely inside the sheet
-            />
-          ) : null}
-        </BottomSheetView>
-      </BottomSheet>
+      {/* Reuse dialog, but show ONLY headlines tab */}
+      <CourseDialog
+        visible={dialogOpen}
+        course={selected}
+        onClose={() => setDialogOpen(false)}
+        isAuthenticated={isAuthenticated}
+        token={token}
+        enabledTabs={['head']}   // 👈 headlines-only
+      />
     </GestureHandlerRootView>
   );
 };
 
 const styles = StyleSheet.create({
-  sheetContent: {
-    padding: 24,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-    marginBottom: 12,
-  },
-  metaItem: {
-    fontSize: 14,
-  },
-  sheetText: {
-    fontSize: 16,
-    lineHeight: 22,
-
-  },
+  // reserved for future screen styles
 });
 
 export default SubCoursesScreen;
