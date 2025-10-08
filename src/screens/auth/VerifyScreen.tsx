@@ -32,10 +32,10 @@ const VerifyScreen: React.FC<any> = ({ route, navigation }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff1e2', padding: 16 }}>
-      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 18, textAlign: 'center', marginVertical: 12 }}>
+      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 18, textAlign: 'center', marginVertical: 12  ,  color : "#0f4f30"}}>
         أدخل رمز التحقق
       </Text>
-      <Text style={{ textAlign: 'center', marginBottom: 8, fontFamily: 'NotoKufiArabic-Regular' }}>
+      <Text style={{ textAlign: 'center', marginBottom: 8, fontFamily: 'NotoKufiArabic-Regular'  ,  color : "#0f4f30"}}>
         تم إرسال الرمز إلى {mobile}
       </Text>
       <TextInput

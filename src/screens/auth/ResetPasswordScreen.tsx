@@ -51,7 +51,7 @@ const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff1e2', padding: 16 }}>
-      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 18, textAlign: 'center', marginVertical: 12 }}>
+      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 18, textAlign: 'center', marginVertical: 12 , color : "#0f4f30" }}>
         {step === 'request' ? 'إعادة تعيين كلمة المرور' : 'أدخل رمز التحقق وكلمة المرور الجديدة'}
       </Text>
 

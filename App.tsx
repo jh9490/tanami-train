@@ -1,6 +1,6 @@
 // App.tsx
 import React, { useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Text, TextInput } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import SplashScreen from './src/screens/SplashScreen';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -17,12 +17,25 @@ const App = () => {
 
   // --- Disable font scaling globally ---
   useEffect(() => {
-    Text.defaultProps = Text.defaultProps || {};
-    Text.defaultProps.allowFontScaling = false;
-    Text.defaultProps.style = [
-      Text.defaultProps.style || {},
-      { fontFamily: 'NotoKufiArabic-Regular' },
+    // Text defaults (you already had something like this)
+    const RNText = Text as any;
+    RNText.defaultProps = RNText.defaultProps || {};
+    RNText.defaultProps.allowFontScaling = false;
+    RNText.defaultProps.style = [
+      RNText.defaultProps.style || {},
+      { fontFamily: 'NotoKufiArabic-Regular' , color : "#111"},
     ];
+  
+    // TextInput defaults
+    const RNTextInput = TextInput as any;
+    RNTextInput.defaultProps = RNTextInput.defaultProps || {};
+    RNTextInput.defaultProps.allowFontScaling = false;
+    RNTextInput.defaultProps.style = [
+      RNTextInput.defaultProps.style || {},
+      { color: '#111', fontFamily: 'NotoKufiArabic-Regular' },
+    ];
+    RNTextInput.defaultProps.placeholderTextColor = '#8a8a8a';
+    RNTextInput.defaultProps.selectionColor = '#0f4f30';
   }, []);
 
   // --- Notifications setup ---

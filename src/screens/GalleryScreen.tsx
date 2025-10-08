@@ -172,7 +172,7 @@ const GalleryScreen: React.FC = () => {
         )}
         ListEmptyComponent={
           <View style={{ marginTop: 24, alignItems: 'center' }}>
-            <Text>لا توجد صور حالياً</Text>
+            <Text style={{ color : "#0f4f30"}}>لا توجد صور حالياً</Text>
           </View>
         }
         contentContainerStyle={{ paddingBottom: 12 }}

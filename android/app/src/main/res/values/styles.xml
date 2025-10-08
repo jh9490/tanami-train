@@ -4,6 +4,13 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="editTextStyle">@style/TanamiEditText</item>
     </style>
 
+    <style name="TanamiEditText" parent="@android:style/Widget.EditText">
+        <item name="android:textColor">@color/tanami_text_primary</item>
+
+        <item name="android:textColorHint">@color/tanami_hint</item>
+        <item name="android:textCursorDrawable">@null</item>
+    </style>
 </resources>

@@ -1,4 +1,6 @@
 <resources>
     <!-- add if missing -->
     <color name="notification_color">#0F4F30</color>
+    <color name="tanami_text_primary">#0f4f30</color>
+    <color name="tanami_hint">#988561</color>
 </resources>

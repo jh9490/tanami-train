@@ -22,7 +22,7 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff1e2', padding: 16 }}>
-      {<Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 10, textAlign: 'center', marginVertical: 12 }}>
+      {<Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 10, textAlign: 'center', marginVertical: 12 , color : "#0f4f30" }}>
        في حال كنت متدربا سابقا يفضل ان تسجل بنفس رقم هاتفك المسجل لدى تنامي ترين
       </Text> }
       <TextInput placeholder="رقم الجوال" keyboardType="phone-pad" value={mobile} onChangeText={setMobile}

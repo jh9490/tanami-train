@@ -11,17 +11,17 @@ const Container = styled.View`
 const ContactUsScreen = () => {
   return (
     <Container>
-      <Text style={{ fontSize: 20, fontFamily: 'NotoKufiArabic-Bold', marginBottom: 10 }}>
+      <Text style={{ fontSize: 20, fontFamily: 'NotoKufiArabic-Bold', marginBottom: 10 , color : "#0f4f30" }}>
         اتصل بنا
       </Text>
-      <Text style={{ fontFamily: 'NotoKufiArabic-Regular', marginVertical: 5 }}>
-        الهاتف: 0999222333
+      <Text style={{ fontFamily: 'NotoKufiArabic-Regular', marginVertical: 5  , color : "#0f4f30"}}>
+        الهاتف: 963992293006+
       </Text>
       <Text
-        style={{ fontFamily: 'NotoKufiArabic-Regular', marginVertical: 5, color: 'blue' }}
-        onPress={() => Linking.openURL('mailto:info@example.com')}
+        style={{ fontFamily: 'NotoKufiArabic-Regular', marginVertical: 5,  color : "#0f4f30" }}
+        onPress={() => Linking.openURL('mailto:info@tanamitrain.com')}
       >
-        البريد الإلكتروني: info@example.com
+        البريد الإلكتروني: info@tanamitrain.com
       </Text>
     </Container>
   );
