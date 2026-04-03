@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import styled from 'styled-components/native';
 import Carousel from 'react-native-reanimated-carousel';
+import Animated, { interpolate, Extrapolate } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
@@ -243,6 +244,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isAuthenticated, displayName, token } = useAuth(); // ← token
 
+  type SliderItem = { id: string; image: string; link?: string };
   const openLinkSafe = useCallback(async (url: string) => {
     try {
       const ok = await Linking.canOpenURL(url);
@@ -374,29 +376,32 @@ export default function HomeScreen() {
 
     return (
       <AuthCard>
-        <AuthTitle>سجّل دخولك الآن</AuthTitle>
-        <AuthSubtitle>للوصول إلى جميع المميزات</AuthSubtitle>
-
-        <PrimaryBtn
-          style={{ alignSelf: 'center', marginTop: 16 }}
-          onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
-        >
-          <PrimaryText>تسجيل الدخول</PrimaryText>
-        </PrimaryBtn>
-
-        <Text
-          style={{
-            marginTop: 12,
-            fontSize: 13,
-            color: '#988561',
-            fontFamily: 'NotoKufiArabic-Bold',
-            textAlign: 'center',
-          }}
-          onPress={() => navigation.navigate('AuthStack', { screen: 'SignUp' })}
-        >
-          ليس لديك حساب؟ سجّل الآن
-        </Text>
-      </AuthCard>
+      <AuthTitle>ابدأ الرحلة مع تنامي ترين</AuthTitle>
+      <AuthSubtitle>أنشئ حسابًا للوصول إلى جميع المميزات</AuthSubtitle>
+    
+      {/* ✅ Sign Up as primary CTA */}
+      <PrimaryBtn
+        style={{ alignSelf: 'center', marginTop: 16 }}
+        onPress={() => navigation.navigate('AuthStack', { screen: 'SignUp' })}
+      >
+        <PrimaryText>إنشاء حساب</PrimaryText>
+      </PrimaryBtn>
+    
+      {/* ✅ Sign In as a lightweight link */}
+      <Text
+        style={{
+          marginTop: 12,
+          fontSize: 13,
+          color: '#0f4f30',
+          fontFamily: 'NotoKufiArabic-Bold',
+          textAlign: 'center',
+          textDecorationLine: 'underline',
+        }}
+        onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
+      >
+        لديك حساب بالفعل؟ سجّل الدخول من هنا
+      </Text>
+    </AuthCard>
     );
   }, [isAuthenticated, displayName, navigation]);
 
@@ -405,28 +410,48 @@ export default function HomeScreen() {
     () => (
       <View>
         {sliderItems.length > 0 ? (
-          <Carousel
+          <Carousel<SliderItem>
             width={SCREEN_WIDTH}
             height={200}
-            autoPlay
             loop
-            data={sliderItems}
-            scrollAnimationDuration={1000}
+            autoPlay
+            autoPlayInterval={6000}
+            scrollAnimationDuration={1200}
+            windowSize={5}
+            mode="parallax"
+            /** value is a number (offset from center) */
+            customAnimation={(value: number) => {
+              'worklet';
+              const a = Math.abs(value); // 0 = focused, 1 = one page away
+              const opacity = interpolate(a, [0, 0.5, 1], [1, 0.6, 0], Extrapolate.CLAMP);
+              const scale = interpolate(a, [0, 1], [1, 0.98], Extrapolate.CLAMP);
+              return { opacity, transform: [{ scale }] };
+            }}
             onConfigurePanGesture={(g) => {
               'worklet';
-              g.activeOffsetX([-20, 20]); // horizontal intent only
-              g.failOffsetY([-10, 10]);   // vertical first → let ScrollView handle
+              g.activeOffsetX([-20, 20]);
+              g.failOffsetY([-10, 10]);
             }}
-            renderItem={({ item }) => (
-              <SlideTouchable onPress={() => item.link && openLinkSafe(item.link!)}>
-                <SlideImage source={{ uri: item.image }} resizeMode="cover" />
+            renderItem={({ item }: { item: SliderItem }) => (
+              <SlideTouchable
+                activeOpacity={0.9}
+                onPress={() => item.link && openLinkSafe(item.link)}
+                style={{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#e9e7e0' }}
+              >
+                <SlideImage
+                  source={{ uri: item.image }}
+                  resizeMode="cover"
+                  style={{ width: '100%', height: '100%' }}
+                />
               </SlideTouchable>
             )}
+            data={sliderItems}
+            keyExtractor={(it) => it.id}
           />
         ) : loading ? (
           <ActivityIndicator size="large" style={{ marginVertical: 24 }} />
         ) : null}
-
+  
         <AuthSection />
       </View>
     ),

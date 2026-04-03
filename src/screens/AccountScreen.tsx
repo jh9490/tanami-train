@@ -1,15 +1,30 @@
 // src/screens/AccountScreen.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, Alert, TextInput,
+  ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Keyboard
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import type { Profile, UpdateProfileBody } from '../types/api';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+const isDate  = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
 const norm = (v: string) => {
   const t = (v || '').trim();
   return t === '' ? null : t;
+};
+const toYMD = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const fromYMD = (s?: string | null) => {
+  if (!s || !isDate(s)) return new Date(2000, 0, 1);
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
 };
 
 export default function AccountScreen() {
@@ -18,15 +33,28 @@ export default function AccountScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // keyboard padding (so buttons/fields don’t get covered)
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    const sh = Keyboard.addListener('keyboardDidShow', (e) =>
+      setKbHeight(e.endCoordinates?.height || 0)
+    );
+    const hd = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
+    return () => { sh.remove(); hd.remove(); };
+  }, []);
+
   // form state
-  const [fullname_ar, setFullnameAr]   = useState('');
-  const [fullname_en, setFullnameEn]   = useState('');
-  const [email, setEmail]               = useState('');
-  const [title_ar, setTitleAr]          = useState('');
-  const [title_en, setTitleEn]          = useState('');
-  const [address_ar, setAddressAr]      = useState('');
-  const [address_en, setAddressEn]      = useState('');
-  const [date_of_birth, setDob]         = useState('');
+  const [fullname_ar, setFullnameAr] = useState('');
+  const [fullname_en, setFullnameEn] = useState('');
+  const [email, setEmail]           = useState('');
+  const [title_ar, setTitleAr]      = useState('');
+  const [title_en, setTitleEn]      = useState('');
+  const [address_ar, setAddressAr]  = useState('');
+  const [address_en, setAddressEn]  = useState('');
+  const [date_of_birth, setDob]     = useState(''); // YYYY-MM-DD
+
+  // Date picker
+  const [showDobPicker, setShowDobPicker] = useState(false);
 
   // snapshot from server to diff against
   const [initial, setInitial] = useState<Profile | null>(null);
@@ -51,7 +79,6 @@ export default function AccountScreen() {
         setAddressEn(p?.address_en ?? '');
         setDob(p?.date_of_birth ?? '');
       } catch {
-        // no profile yet → keep empty form
         setInitial(null);
       } finally {
         if (mounted) setLoading(false);
@@ -106,7 +133,6 @@ export default function AccountScreen() {
   const handleSave = async () => {
     if (!token) return;
 
-    // light validations
     if (email.trim() && !isEmail(email.trim())) {
       Alert.alert('تنبيه', 'صيغة البريد الإلكتروني غير صحيحة.');
       return;
@@ -115,7 +141,6 @@ export default function AccountScreen() {
       Alert.alert('تنبيه', 'صيغة التاريخ يجب أن تكون YYYY-MM-DD مثل 1995-06-12.');
       return;
     }
-    // first-time create requires Arabic full name (server enforces too)
     if (!initial && !fullname_ar.trim()) {
       Alert.alert('تنبيه', 'الاسم الكامل بالعربية مطلوب.');
       return;
@@ -132,7 +157,6 @@ export default function AccountScreen() {
       const res = await api.updateProfile(token, payload);
       const p = res.profile;
 
-      // update local form from server echo
       setInitial(p);
       setFullnameAr(p.fullname_ar ?? '');
       setFullnameEn(p.fullname_en ?? '');
@@ -143,8 +167,7 @@ export default function AccountScreen() {
       setAddressEn(p.address_en ?? '');
       setDob(p.date_of_birth ?? '');
 
-      await refreshProfile(); // so other screens get latest
-
+      await refreshProfile();
       Alert.alert('تم الحفظ', 'تم إرسال التعديلات للمراجعة. بانتظار اعتماد الإدارة.');
     } catch (e: any) {
       Alert.alert('خطأ', e?.message || 'تعذر حفظ البيانات.');
@@ -160,71 +183,119 @@ export default function AccountScreen() {
     ]);
   };
 
+  // Date picker change
+  const onChangeDob = (_: any, picked?: Date) => {
+    if (Platform.OS === 'android') setShowDobPicker(false); // Android picker is inline-modal
+    if (picked) setDob(toYMD(picked));
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
-      <View style={styles.card}>
-        <Text style={styles.title}>الملف الشخصي</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#fff1e2' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 24 + kbHeight }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.card}>
+          <Text style={styles.title}>الملف الشخصي</Text>
 
-        {/* pending banner */}
-        {!!initial?.pending_approval && initial.pending_approval === 1 && (
-          <View style={styles.banner}>
-            <Text style={styles.bannerText}>قيد المراجعة من قِبل الإدارة</Text>
+          {!!initial?.pending_approval && initial.pending_approval === 1 && (
+            <View style={styles.banner}>
+              <Text style={styles.bannerText}>قيد المراجعة من قِبل الإدارة</Text>
+            </View>
+          )}
+
+          <View style={styles.row}>
+            <Text style={styles.label}>رقم الجوال</Text>
+            <Text style={styles.value}>{user?.username || '—'}</Text>
           </View>
-        )}
 
-        {/* mobile (username) */}
-        <View style={styles.row}>
-          <Text style={styles.label}>رقم الجوال</Text>
-          <Text style={styles.value}>{user?.username || '—'}</Text>
+          <Field label="الاسم الكامل (عربي)">
+            <TextInput style={styles.input} placeholder="اكتب اسمك الكامل بالعربية"
+              value={fullname_ar} onChangeText={setFullnameAr} textAlign="right" returnKeyType="next" />
+          </Field>
+
+          <Field label="الاسم الكامل (إنجليزي)">
+            <TextInput style={styles.input} placeholder="Full name (English)"
+              value={fullname_en} onChangeText={setFullnameEn} textAlign="right" returnKeyType="next" />
+          </Field>
+
+          <Field label="البريد الإلكتروني">
+            <TextInput style={styles.input} placeholder="email@example.com"
+              value={email} onChangeText={setEmail} keyboardType="email-address"
+              autoCapitalize="none" textAlign="right" returnKeyType="next" />
+          </Field>
+
+          <Field label="المسمى (عربي)">
+            <TextInput style={styles.input} placeholder="مثال: طالب"
+              value={title_ar} onChangeText={setTitleAr} textAlign="right" returnKeyType="next" />
+          </Field>
+
+          <Field label="المسمى (إنجليزي)">
+            <TextInput style={styles.input} placeholder="e.g., Student"
+              value={title_en} onChangeText={setTitleEn} textAlign="right" returnKeyType="next" />
+          </Field>
+
+          <Field label="العنوان (عربي)">
+            <TextInput style={styles.input} placeholder="مثال: أبوظبي - الإمارات"
+              value={address_ar} onChangeText={setAddressAr} textAlign="right" returnKeyType="next" />
+          </Field>
+
+          <Field label="العنوان (إنجليزي)">
+            <TextInput style={styles.input} placeholder="Abu Dhabi, UAE"
+              value={address_en} onChangeText={setAddressEn} textAlign="right" returnKeyType="next" />
+          </Field>
+
+          {/* Date field with native date picker */}
+          <Field label="تاريخ الميلاد">
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowDobPicker(true);
+              }}
+            >
+              <TextInput
+                style={styles.input}
+                placeholder="YYYY-MM-DD"
+                value={date_of_birth}
+                editable={false}
+                pointerEvents="none"
+                textAlign="right"
+              />
+            </TouchableOpacity>
+          </Field>
+
+          {showDobPicker && (
+            <DateTimePicker
+              value={fromYMD(date_of_birth)}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onChange={onChangeDob}
+              maximumDate={new Date()} // لا مستقبل
+            />
+          )}
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, { opacity: changed && !saving ? 1 : 0.6 }]}
+            onPress={handleSave}
+            disabled={!changed || saving}
+          >
+            {saving ? <ActivityIndicator color="#eceadf" /> : <Text style={styles.primaryText}>حفظ</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 10 }]} onPress={handleLogout}>
+            <Text style={styles.secondaryText}>تسجيل الخروج</Text>
+          </TouchableOpacity>
         </View>
 
-        <Field label="الاسم الكامل (عربي)">
-          <TextInput style={styles.input} placeholder="اكتب اسمك الكامل بالعربية" value={fullname_ar} onChangeText={setFullnameAr} textAlign="right" />
-        </Field>
-
-        <Field label="الاسم الكامل (إنجليزي)">
-          <TextInput style={styles.input} placeholder="Full name (English)" value={fullname_en} onChangeText={setFullnameEn} textAlign="right" />
-        </Field>
-
-        <Field label="البريد الإلكتروني">
-          <TextInput style={styles.input} placeholder="email@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" textAlign="right" />
-        </Field>
-
-        <Field label="المسمى (عربي)">
-          <TextInput style={styles.input} placeholder="مثال: طالب" value={title_ar} onChangeText={setTitleAr} textAlign="right" />
-        </Field>
-
-        <Field label="المسمى (إنجليزي)">
-          <TextInput style={styles.input} placeholder="e.g., Student" value={title_en} onChangeText={setTitleEn} textAlign="right" />
-        </Field>
-
-        <Field label="العنوان (عربي)">
-          <TextInput style={styles.input} placeholder="مثال: أبوظبي - الإمارات" value={address_ar} onChangeText={setAddressAr} textAlign="right" />
-        </Field>
-
-        <Field label="العنوان (إنجليزي)">
-          <TextInput style={styles.input} placeholder="Abu Dhabi, UAE" value={address_en} onChangeText={setAddressEn} textAlign="right" />
-        </Field>
-
-        <Field label="تاريخ الميلاد">
-          <TextInput style={styles.input} placeholder="YYYY-MM-DD" value={date_of_birth} onChangeText={setDob} textAlign="right" />
-        </Field>
-
-        <TouchableOpacity
-          style={[styles.primaryBtn, { opacity: changed && !saving ? 1 : 0.6 }]}
-          onPress={handleSave}
-          disabled={!changed || saving}
-        >
-          {saving ? <ActivityIndicator color="#eceadf" /> : <Text style={styles.primaryText}>حفظ</Text>}
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 10 }]} onPress={handleLogout}>
-          <Text style={styles.secondaryText}>تسجيل الخروج</Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
-    </ScrollView>
+        {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -264,8 +335,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#111',
   },
-  primaryBtn: { marginTop: 16, backgroundColor: '#0f4f30', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  primaryBtn: {
+    marginTop: 16, backgroundColor: '#0f4f30', paddingVertical: 12,
+    borderRadius: 12, alignItems: 'center'
+  },
   primaryText: { color: '#eceadf', fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
-  secondaryBtn: { backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: '#0f4f30', alignItems: 'center' },
+  secondaryBtn: {
+    backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 12,
+    borderWidth: 1, borderColor: '#0f4f30', alignItems: 'center'
+  },
   secondaryText: { color: '#0f4f30', fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
 });

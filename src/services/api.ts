@@ -1,41 +1,128 @@
 // src/services/api.ts
-const BASE_URL = 'http://tanamitrain.com/tanamiAdmin/api/mobile-app';
-const BASE = 'http://tanamitrain.com/tanamiAdmin';
 
+/** Base URLs */
+export const BASE_ROOT = 'https://tanamitrain.com/tanamiAdmin';
+const BASE_URL  = `${BASE_ROOT}/api/mobile-app`;   // mobile-app endpoints
+const BASE_TG   = `${BASE_ROOT}/api/telegram`;     // telegram endpoints
+const BASE      = BASE_ROOT;                       // legacy helpers expect BASE
 
+type HttpMethod = 'GET' | 'POST' | 'PATCH';
 
-type HttpMethod = 'GET' | 'POST';
+import {
+  CoursesResponse,
+  GetCourseResponse,
+  Phase,
+  Profile,
+  RegisterPushBody,
+  RegisterRequestResponse,
+  UpdateProfileBody,
+} from '../types/api';
 
-import { CoursesResponse, GetCourseResponse, Phase, Profile, RegisterPushBody, RegisterRequestResponse, UpdateProfileBody } from '../types/api'; // adjust import if needed
+/* ----------------------------- Debug helpers ----------------------------- */
+
+const DEBUG = true; // flip to false in prod
+
+function logReq(path: string, method: string, body?: any, token?: string) {
+  if (!DEBUG) return;
+  const hasToken = Boolean(token);
+  console.log(
+    `%c[API →] ${method} ${path}`,
+    'color:#0b7285;font-weight:bold',
+    '\nbody:', body ?? {},
+    hasToken ? '\n(Authorization: Bearer ...)' : ''
+  );
+}
+
+function logRes(path: string, status: number, json: any) {
+  if (!DEBUG) return;
+  const ok = status >= 200 && status < 300;
+  console[ok ? 'log' : 'warn'](
+    `%c[API ←] ${status} ${path}`,
+    ok ? 'color:#2b8a3e;font-weight:bold' : 'color:#d9480f;font-weight:bold',
+    '\njson:', json
+  );
+}
+
+function logErr(path: string, e: any) {
+  if (!DEBUG) return;
+  console.error(`%c[API ✖] ${path}`, 'color:#c92a2a;font-weight:bold', '\nerror:', e?.message || e);
+}
+
+/* ------------------------------ Core request ----------------------------- */
+
+async function request<T>(
+  path: string,
+  method: HttpMethod = 'GET',
+  body?: any,
+  token?: string
+): Promise<T> {
+  const url = `${BASE_URL}/${path}`;
+  try {
+    logReq(path, method, body, token);
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+    });
+
+    const text = await res.text();                // read once
+    let json: any;
+    try { json = text ? JSON.parse(text) : {}; }  // parse if possible
+    catch { json = { ok: false, raw: text }; }
+
+    logRes(path, res.status, json);
+
+    if (!res.ok || (json && json.ok === false)) {
+      throw new Error(json?.error ?? json?.message ?? `HTTP_${res.status}`);
+    }
+    return json as T;
+  } catch (e: any) {
+    logErr(path, e);
+    throw e;
+  }
+}
+
+/** Absolute-path request (for /api/telegram/* etc.) */
+async function requestAbs<T>(
+  url: string,
+  method: HttpMethod = 'GET',
+  body?: any,
+  token?: string
+): Promise<T> {
+  const label = url.replace(BASE_ROOT, '');
+  try {
+    logReq(label, method, body, token);
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+    });
+    const text = await res.text();
+    let json: any; try { json = text ? JSON.parse(text) : {}; } catch { json = { ok: false, raw: text }; }
+    logRes(label, res.status, json);
+    if (!res.ok || (json && json.ok === false)) throw new Error(json?.error ?? json?.message ?? `HTTP_${res.status}`);
+    return json as T;
+  } catch (e: any) {
+    logErr(label, e);
+    throw e;
+  }
+}
+
+/* ----------------------- small JSON fetch utilities ---------------------- */
 
 async function debugJson(url: string, headers: Record<string,string>) {
   console.log('➡️ GET', url);
-  const res = await fetch(url, { method: 'GET', headers });
-  const status = res.status;
-  const statusText = res.statusText || '';
-  const body = await res.text();
-  console.log('⬅️', status, statusText, '| body preview:', body.slice(0, 180));
-  let parsed: any;
-  try { parsed = JSON.parse(body); }
-  catch { throw new Error(`HTTP ${status} ${statusText} (not JSON)`); }
-  return parsed;
-}
-
-async function request<T>(path: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body?: any, token?: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}/${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
-  });
-  let json: any = null;
-  try { json = await res.json(); } catch { }
-  if (!res.ok || (json && json.ok === false)) {
-    throw new Error(json?.error ?? json?.message ?? `HTTP_${res.status}`);
-  }
-  return json as T;
+  const res   = await fetch(url, { method: 'GET', headers });
+  const text  = await res.text();
+  console.log('⬅️', res.status, res.statusText || '', '| body preview:', text.slice(0, 180));
+  try { return JSON.parse(text); }
+  catch { throw new Error(`HTTP ${res.status} ${res.statusText || ''} (not JSON)`); }
 }
 
 async function jsonFetch(url: string, opts: RequestInit = {}) {
@@ -47,29 +134,19 @@ async function jsonFetch(url: string, opts: RequestInit = {}) {
   try { return JSON.parse(text); } catch { return { ok: false, status: res.status, raw: text }; }
 }
 
-
-
-async function jsonFetchWithTimeout(
-  url: string,
-  opts: RequestInit = {},
-  timeoutMs = 10000
-) {
+async function jsonFetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = 10000) {
   const controller = new AbortController();
   const to = setTimeout(() => controller.abort(), timeoutMs);
   try {
     console.log('[API] →', opts.method || 'GET', url);
-    const res = await fetch(url, {
+    const res  = await fetch(url, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       signal: controller.signal,
       ...opts,
     });
     const text = await res.text();
-    console.log('[API] ←', res.status, text.slice(0, 400)); // trim log
-    try {
-      return JSON.parse(text);
-    } catch {
-      return { ok: false, status: res.status, raw: text };
-    }
+    console.log('[API] ←', res.status, text.slice(0, 400));
+    try { return JSON.parse(text); } catch { return { ok: false, status: res.status, raw: text }; }
   } catch (e: any) {
     console.log('[API] ✖', e?.name || e, e?.message);
     return { ok: false, error: e?.message || 'network_error' };
@@ -78,12 +155,12 @@ async function jsonFetchWithTimeout(
   }
 }
 
+/* -------------------------------- Endpoints ------------------------------ */
 
-
-// Endpoints
 export const api = {
+  // Auth
   signup: (mobile: string, password: string, email?: string) =>
-    request<{ ok: true; message: string; mobile: string; /* debug_otp?: string */ }>(
+    request<{ ok: true; message: string; mobile: string }>(
       'signup', 'POST', { mobile, password, email }
     ),
 
@@ -97,30 +174,20 @@ export const api = {
       'login', 'POST', { mobile, password }
     ),
 
-
-
   me: (token: string) =>
     request<{ ok: true; user: any }>('me', 'GET', undefined, token),
 
   logout: (token: string) =>
     request<{ ok: true; message: string }>('logout', 'POST', {}, token),
 
-  // ⬇️ now returns the richer Profile (or null if none yet)
+  // Profile
   getProfile: (token: string) =>
-    request<{ ok: true; profile: Profile | null }>(
-      'profile', 'GET', undefined, token
-    ),
+    request<{ ok: true; profile: Profile | null }>('profile', 'GET', undefined, token),
 
-  // ⬇️ accepts partial body; returns full Profile echo from server
   updateProfile: (token: string, data: UpdateProfileBody) =>
-    request<{ ok: true; profile: Profile }>(
-      'profile', 'PATCH', data, token
-    ),
+    request<{ ok: true; profile: Profile }>('profile', 'PATCH', data, token),
 
-
-  resendOtp: (mobile: string) =>
-    request<{ ok: boolean; message?: string }>('resend-otp', 'POST', { mobile }),
-
+  // Password
   passwordResetRequest: (mobile: string) =>
     request<{ ok: boolean; message: string }>('password-reset-request', 'POST', { mobile }),
 
@@ -134,87 +201,90 @@ export const api = {
       'change-password', 'POST', { current_password, new_password }, token
     ),
 
+  // Courses
+  fetchCourses: (token: string, mobile: string, phase: Phase = 'all') =>
+    request<CoursesResponse>('my-courses', 'POST', { mobile, phase }, token),
 
-  fetchCourses: (
-    token: string,
-    mobile: string,
-    phase: Phase = 'all'
-  ) =>
-    request<CoursesResponse>(
-      'my-courses',
-      'POST',
-      { mobile, phase },
-      token
+  async fetchCourseById(token: string | null | undefined, id: string | number) {
+    const headers: Record<string,string> = { Accept: 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const url = `${BASE_URL}/get-course?id=${id}`;
+    return debugJson(url, headers) as Promise<GetCourseResponse>;
+  },
+
+  async fetchActivityFiles(token: string | null | undefined, activityId: string | number) {
+    const headers: Record<string,string> = { Accept: 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const url = `${BASE_URL}/activity-files?id=${activityId}`;
+    return debugJson(url, headers);
+  },
+
+  async fetchCertificateByStudentActivity(token: string | null | undefined, activityId: string | number, studentId: string | number) {
+    const headers: Record<string,string> = { Accept: 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const url = `${BASE_URL}/certi-by-student-activity?activity_id=${activityId}&student_id=${studentId}`;
+    return debugJson(url, headers);
+  },
+
+  // Telegram helpers — these hit /api/telegram/*
+  telegramStatus: (mobile: string) =>
+    requestAbs<{ ok: true; linked: boolean }>(`${BASE_TG}/status`, 'POST', { mobile }),
+
+  telegramCreateLink: (mobile: string) =>
+    requestAbs<{ ok: true; payload: string; code?: string; ttl_minutes?: number }>(
+      `${BASE_TG}/create-link-payload`, 'POST', { mobile }
     ),
 
+  // OTP via Telegram — this one stays under mobile-app (unless you moved it)
+  sendOtp: (mobile: string, reason: 'initial' | 'resend' | 'password_reset' = 'initial') =>
+    request<{ ok: boolean; message?: string }>('send-otp', 'POST', { mobile, reason }),
 
+  resendOtp: (mobile: string) =>
+    request<{ ok: boolean; message?: string }>('send-otp', 'POST', { mobile, reason: 'resend' }),
 
+  // FCM / Inbox (legacy server paths live under BASE_ROOT)
+  async registerPushToken(body: RegisterPushBody) {
+    const res = await fetch(`${BASE_ROOT}/api/fcm/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const text = await res.text();
+    let json: any; try { json = JSON.parse(text); } catch { json = { ok: false, raw: text }; }
+    if (!res.ok || json?.ok === false) throw new Error(`registerPushToken http ${res.status}`);
+    return json;
+  },
 
-    async fetchCourseById(token: string | null | undefined, id: string | number) {
-      const headers: Record<string,string> = { Accept: 'application/json' };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const url = `http://tanamitrain.com/tanamiAdmin/api/mobile-app/get-course?id=${id}`;
-      return debugJson(url, headers);
-    },
-  
-    async fetchActivityFiles(token: string | null | undefined, activityId: string | number) {
-      const headers: Record<string,string> = { Accept: 'application/json' };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const url = `http://tanamitrain.com/tanamiAdmin/api/mobile-app/activity-files?id=${activityId}`;
-      return debugJson(url, headers);
-    },
-  
-    async fetchCertificateByStudentActivity(token: string | null | undefined, activityId: string | number, studentId: string | number) {
-      const headers: Record<string,string> = { Accept: 'application/json' };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const url = `http://tanamitrain.com/tanamiAdmin/api/mobile-app/certi-by-student-activity?activity_id=${activityId}&student_id=${studentId}`;
-      return debugJson(url, headers);
-    },
+  async inboxAck(body: {
+    profile_id: number | null;
+    device_id: string;
+    notification_id?: number;
+    fcm_message_id?: string;
+    title?: string;
+    body?: string;
+    data?: Record<string, string>;
+    via?: 'token' | 'profile' | 'topic';
+    received_at?: string; // 'YYYY-MM-DD HH:mm:ss'
+  }) {
+    return jsonFetch(`${BASE_ROOT}/api/fcm/inbox-ack`, { method: 'POST', body: JSON.stringify(body) });
+  },
 
-    async registerPushToken(body: RegisterPushBody) {
-      const res = await fetch('http://tanamitrain.com/tanamiAdmin/api/fcm/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const text = await res.text();
-      let json: any; try { json = JSON.parse(text); } catch { json = { ok: false, raw: text }; }
-      if (!res.ok || json?.ok === false) throw new Error(`registerPushToken http ${res.status}`);
-      return json;
-    },
+  async inboxList(profileId: number, limit = 20, offset = 0) {
+    const url = `${BASE_ROOT}/api/fcm/inbox-list?profile_id=${profileId}&limit=${limit}&offset=${offset}`;
+    return jsonFetchWithTimeout(url);
+  },
 
-    async inboxAck(body: {
-      profile_id: number | null;
-      device_id: string;
-      notification_id?: number;
-      fcm_message_id?: string;
-      title?: string;
-      body?: string;
-      data?: Record<string, string>;
-      via?: 'token' | 'profile' | 'topic';
-      received_at?: string; // 'YYYY-MM-DD HH:mm:ss'
-    }) {
-      return jsonFetch(`${BASE}/api/fcm/inbox-ack`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-    },
+  async inboxOpen(profileId: number, inboxId: number) {
+    return jsonFetchWithTimeout(`${BASE_ROOT}/api/fcm/inbox-open`, {
+      method: 'POST',
+      body: JSON.stringify({ profile_id: profileId, inbox_id: inboxId }),
+    });
+  },
 
-    async inboxList(profileId: number, limit = 20, offset = 0) {
-      const url = `${BASE}/api/fcm/inbox-list?profile_id=${profileId}&limit=${limit}&offset=${offset}`;
-      return jsonFetchWithTimeout(url);
-    },
-  
-    async inboxOpen(profileId: number, inboxId: number) {
-      return jsonFetchWithTimeout(`${BASE}/api/fcm/inbox-open`, {
-        method: 'POST',
-        body: JSON.stringify({ profile_id: profileId, inbox_id: inboxId }),
-      });
-    },
+  // Registrations
+  registerForActivity: (token: string, activity_id: number, online: 0|1 = 0) =>
+    request<RegisterRequestResponse>('register-request', 'POST', { activity_id, online }, token),
 
-     registerForActivity: (token: string, activity_id: number, online: 0|1 = 0) =>
-      request<RegisterRequestResponse>('register-request', 'POST', { activity_id, online }, token),
-  
-     myRegistrations: (token: string) =>
-      request<{ ok: true; items: any[] }>('my-registrations', 'GET', undefined, token),
+  myRegistrations: (token: string) =>
+    request<{ ok: true; items: any[] }>('my-registrations', 'GET', undefined, token),
 };

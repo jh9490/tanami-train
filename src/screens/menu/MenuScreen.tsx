@@ -1,6 +1,6 @@
 // src/screens/MenuScreen.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert, Platform } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -39,7 +39,7 @@ const Row = ({
 
 export default function MenuScreen() {
   const navigation = useNavigation<Nav>();
-  const { signOut, user, isAuthenticated } = useAuth();
+  const { signOut, user, isAuthenticated , displayName } = useAuth();
 
   const handleLogout = () => {
     Alert.alert('تأكيد', 'هل تريد تسجيل الخروج؟', [
@@ -59,14 +59,41 @@ export default function MenuScreen() {
     ]);
   };
 
+  const lat = 24.4539;  // example
+  const lng = 54.3773;  // example
+  const label = 'Tanami HQ'; // optional
+  const query = `${lat},${lng}`; // or 'Street, City'
+  async function tryOpen(url: string) {
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (ok) { await Linking.openURL(url); return true; }
+      return false;
+    } catch { return false; }
+  }
+  
   const openMap = async () => {
-    const url = 'https://maps.app.goo.gl/sLtZczjuXT6cuSZ88?g_st=ac';
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
-      Alert.alert('خطأ', 'لا يمكن فتح تطبيق الخرائط على هذا الجهاز');
+    // Build candidates (no dynamic links)
+    const candidates: string[] = [
+      // 1) Open Google Maps app directly (iOS & Android)
+      `comgooglemaps://?q=${encodeURIComponent(label || query)}`,
+  
+      // 2) Android geo: URI (most OEMs)
+      Platform.OS === 'android'
+        ? `geo:${lat},${lng}?q=${encodeURIComponent(label || query)}`
+        : '',
+  
+      // 3) Official web URL (works everywhere)
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+  
+      // 4) LAST RESORT: your original short link (avoid, but keep as fallback)
+      `https://maps.app.goo.gl/sLtZczjuXT6cuSZ88`,
+    ].filter(Boolean);
+  
+    for (const url of candidates) {
+      if (await tryOpen(url)) return;
     }
+  
+    Alert.alert('خطأ', 'لا يمكن فتح الخريطة على هذا الجهاز.');
   };
 
   return (
@@ -84,7 +111,7 @@ export default function MenuScreen() {
             {isAuthenticated ? 'أهلًا بك' : 'مرحبًا'}
           </Text>
           <Text style={styles.headerSub}>
-            {isAuthenticated ? (user?.username ?? '') : 'سجّل الدخول للوصول لكل الميزات'}
+            {isAuthenticated ? displayName: 'سجّل الدخول للوصول لكل الميزات'}
           </Text>
         </View>
       </View>
@@ -107,6 +134,19 @@ export default function MenuScreen() {
 
         {/* Divider */}
         <View style={styles.divider} />
+
+        {/* ✅ Show only for authenticated users */}
+        {isAuthenticated && (
+          <Row
+            title="صـوري"
+            icon="photo-library"
+            onPress={() => navigation.navigate('MyPhotos' as never)}
+          />
+        )}
+
+        {/* Divider */}
+        <View style={styles.divider} />
+ 
 
         {isAuthenticated ? (
           <Row title="تسجيل الخروج" icon="logout" onPress={handleLogout} danger />

@@ -5,7 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 /* Providers */
 import { AuthProvider } from '../context/AuthContext'; // ⬅️ change to ../providers/AuthProvider if that's your path
 
@@ -36,6 +36,8 @@ import MyNotifications from '../screens/MyNotificationsScreen';
 import MyCourses from '../screens/MyCoursesScreen';
 import CourseTabs from '../screens/CourseTabsScreen';
 import MyRegistrationRequests from '../screens/MyRegistrationRequests';
+import MyPhotosScreen from '../screens/MyPhotosScreen';
+
 /* ===== Types ===== */
 export type RootStackParamList = {
   Splash: undefined;
@@ -44,8 +46,8 @@ export type RootStackParamList = {
 
   AuthStack: { screen?: keyof AuthStackParamList } | undefined;
   AccountStack: { screen?: keyof AccountStackParamList } | undefined;
-  UserStack : { screen?: keyof UserStackParamList } | undefined;
-  
+  UserStack: { screen?: keyof UserStackParamList } | undefined;
+
 };
 
 export type MainTabParamList = {
@@ -60,6 +62,7 @@ export type MenuStackParamList = {
   VerifyCertificate: undefined;
   ContactUs: undefined;
   OurLocation: undefined;
+  MyPhotos:undefined;
 };
 
 export type AuthStackParamList = {
@@ -67,6 +70,7 @@ export type AuthStackParamList = {
   SignUp: undefined;
   ResetPassword: undefined;
   OtpVerify: { mobile: string; name?: string } | undefined;
+  PhoneLoginScreen: undefined;
 };
 
 export type AccountStackParamList = {
@@ -122,6 +126,11 @@ function MenuStack() {
         component={OurLocationScreen}
         options={{ title: 'موقعنا' }}
       />
+      <MenuStackNav.Screen
+        name="MyPhotos"
+        component={MyPhotosScreen}
+        options={{ title: 'صـوري' }}
+      />
     </MenuStackNav.Navigator>
   );
 }
@@ -134,6 +143,7 @@ function AuthStack() {
       <AuthStackNav.Screen name="SignUp" component={SignUpScreen} options={{ title: 'إنشاء حساب' }} />
       <AuthStackNav.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'إعادة تعيين كلمة المرور' }} />
       <AuthStackNav.Screen name="OtpVerify" component={VerifyScreen} options={{ title: 'رمز التحقق' }} />
+
     </AuthStackNav.Navigator>
   );
 }
@@ -187,6 +197,7 @@ function UserStack() {
 
 /* ===== Bottom Tabs ===== */
 function MainTabs() {
+  const insets = useSafeAreaInsets();
   const getHeaderTitle = (name: keyof MainTabParamList) => {
     switch (name) {
       case 'Home': return 'الرئيسية';
@@ -203,8 +214,8 @@ function MainTabs() {
         tabBarIcon: ({ color, size }) => {
           const iconName =
             route.name === 'Home' ? 'home' :
-            route.name === 'Courses' ? 'book' :
-            route.name === 'Gallery' ? 'image' : 'menu';
+              route.name === 'Courses' ? 'book' :
+                route.name === 'Gallery' ? 'image' : 'menu';
           const transform = I18nManager.isRTL ? [{ scaleX: -1 }] : undefined;
           return <Icon name={iconName} size={size} color={color} style={{ transform }} />;
         },
@@ -213,8 +224,15 @@ function MainTabs() {
         ...headerCommon,
         headerLeft: () => null,
         headerRight: () => null,
-        tabBarStyle: { backgroundColor: '#0c2a20', borderTopColor: '#ccc', borderTopWidth: 1 },
-        tabBarLabelStyle: { fontSize: 12, marginBottom: 5, fontFamily: 'NotoKufiArabic-Bold' },
+        tabBarStyle: {
+          backgroundColor: '#0c2a20',
+          borderTopColor: '#ccc',
+          borderTopWidth: 1,
+          height: 75 + insets.bottom,
+          paddingBottom: Math.max(10, insets.bottom),
+          paddingTop: 8,
+        },
+        tabBarLabelStyle: { fontSize: 12, fontFamily: 'NotoKufiArabic-Bold' },
         tabBarActiveTintColor: '#cbae82',
         tabBarInactiveTintColor: 'gray',
       })}

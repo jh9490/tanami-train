@@ -10,6 +10,7 @@ import messaging from '@react-native-firebase/messaging';
 import { api } from './src/services/api';
 import { getOrCreateDeviceId } from './src/util/deviceId';
 import { useAuth } from './src/context/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -91,7 +92,9 @@ const App = () => {
       {showSplash ? (
         <SplashScreen onDone={() => setShowSplash(false)} />
       ) : (
-        <AppNavigator />
+         <SafeAreaProvider>
+           <AppNavigator />
+       </SafeAreaProvider>
       )}
     </GestureHandlerRootView>
   );

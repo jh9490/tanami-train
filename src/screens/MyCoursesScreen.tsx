@@ -21,7 +21,7 @@ export default function MyCoursesScreen({ navigation }: any) {
 
   const { user, token } = useAuth();
   const mobile: string | undefined = user?.username || undefined;
-  const [studentId, setStudentId] = useState<number | null>(null); 
+  const [studentId, setStudentId] = useState<number | null>(null);
 
   const fetchCourses = useCallback(
     async (phase: Phase) => {
@@ -35,16 +35,15 @@ export default function MyCoursesScreen({ navigation }: any) {
       try {
         setLoading(true);
         setData([]);
-         if(!user?.username)
-           return
+        if (!user?.username)
+          return
         const json = await api.fetchCourses(token, user?.username, phase);
-       
-        if (json.result === 1)
-          { 
-            setData(json.items || []);
-            setStudentId(json.student?.id ?? null);
-           
-          }
+
+        if (json.result === 1) {
+          setData(json.items || []);
+          setStudentId(json.student?.id ?? null);
+
+        }
         else setData([]);
       } catch (err) {
         console.error('fetchCourses error', err);
@@ -74,11 +73,11 @@ export default function MyCoursesScreen({ navigation }: any) {
     const courseId = item.course?.id;
     const title = item.course?.name_ar || 'دورة';
     const activityId = item.activity?.id; // 👈 add this
-     // prefer the fetched studentId; if missing, fall back to user.id if you have it
+    // prefer the fetched studentId; if missing, fall back to user.id if you have it
     // const resolvedStudentId = studentId ?? (user as any)?.id ?? undefined;
     // console.log(resolvedStudentId);
     if (!courseId) return;
-    navigation.navigate('CourseTabs', { courseId, title , activityId , studentId});
+    navigation.navigate('CourseTabs', { courseId, title, activityId, studentId });
   };
 
   return (
@@ -104,13 +103,19 @@ export default function MyCoursesScreen({ navigation }: any) {
               const title = item.course?.name_ar ?? 'دورة';
               const date = item.activity?.date ?? '';
               const end = item.activity?.end_date ? ` - ${item.activity.end_date}` : '';
-            
+
               return (
                 <View style={styles.cardItem}>
                   {/* title + small link on one row */}
                   <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>{title}</Text>
-            
+                    <Text
+                      style={styles.cardTitle}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {title}
+                    </Text>
+
                     <TouchableOpacity
                       onPress={() => onPressItem(item)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -118,7 +123,7 @@ export default function MyCoursesScreen({ navigation }: any) {
                       <Text style={styles.viewLink}>عرض</Text>
                     </TouchableOpacity>
                   </View>
-            
+
                   <Text style={styles.cardSub}>
                     {date}{end}
                   </Text>
@@ -136,8 +141,8 @@ export default function MyCoursesScreen({ navigation }: any) {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
+  // Segmented control
   segmented: {
     flexDirection: 'row',
     alignSelf: 'center',
@@ -156,13 +161,13 @@ const styles = StyleSheet.create({
   segText: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 12, color: '#333' },
   segTextActive: { color: '#eceadf' },
 
-  // neutral wrapper so the individual cards stand out
+  // List wrapper
   listWrap: {
     flex: 1,
     backgroundColor: 'transparent',
   },
 
-  // individual course card
+  // Course card
   cardItem: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -176,21 +181,50 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+    overflow: 'hidden', // prevent child overflow/bleed
   },
+
+  // Header row: title + "عرض" link
+  cardHeader: {
+    flexDirection: 'row',              // keep as row; we'll align Arabic via text
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,                            // RN 0.71+; remove if older
+  },
+
+  // Title text (multi-line clamp in JSX via numberOfLines)
   cardTitle: {
+    flex: 1,                           // take remaining width
+    flexShrink: 1,                     // allow to shrink instead of pushing out
     fontFamily: 'NotoKufiArabic-Bold',
     color: '#0f4f30',
     fontSize: 15,
-    // textAlign: 'right',
+  
+    lineHeight: 20,
   },
+
+  // "عرض" link
+  viewLink: {
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: 'NotoKufiArabic-Regular',
+    color: '#0f4f30',
+    flexShrink: 0,                     // don't let the link shrink weirdly
+    marginStart: 8,
+    alignSelf: 'flex-start',           // keep it aligned to top if title wraps
+  },
+
+  // Subline (dates)
   cardSub: {
     marginTop: 6,
     fontFamily: 'NotoKufiArabic-Regular',
     color: '#555',
     fontSize: 12,
-    // textAlign: 'right',
+    textAlign: 'right',
   },
 
+  // Misc
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: '#eee' },
   empty: {
     textAlign: 'center',
@@ -198,22 +232,4 @@ const styles = StyleSheet.create({
     fontFamily: 'NotoKufiArabic-Regular',
     paddingVertical: 16,
   },
-
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 8, // RN 0.71+; if older, remove
-  },
-  viewLink: {
-    textDecorationLine: 'underline',
-    fontWeight: '600',
-    fontSize: 14,
-    fontFamily: 'NotoKufiArabic-Regular',
-    // theme color
-    color: '#0f4f30',
-    // keep it snug to the top-right for RTL content too
-    // writingDirection: 'rtl', // optional if you want RTL text flow
-  },
-  
 });

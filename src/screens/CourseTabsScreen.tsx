@@ -1,5 +1,5 @@
 // screens/CourseTabsScreen.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,19 @@ import {
   Alert,
   Linking,
   StyleSheet,
+  Share,
 } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import ViewShot, { captureRef } from 'react-native-view-shot';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import CertificatePreview from './components/CertificatePreview'; // ← adjust path if needed
+import CertificatePreviewNami from './components/CertificatePreviewNami';
 
 const Tab = createMaterialTopTabNavigator();
 
-/* ---------------- Types that match your APIs ---------------- */
+/* ---------------- Types matching your APIs ---------------- */
 interface GetCourseResponse {
   ok: boolean;
   course?: {
@@ -30,8 +34,6 @@ interface GetCourseResponse {
     days?: number;
     hours?: number;
     cost?: number;
-    grade?: string | null;
-    package_id?: number;
   };
 }
 
@@ -45,17 +47,37 @@ type ActivityFile = {
   sha1?: string;
 };
 
-/* ---------------- Normalizers & helpers ---------------- */
+type CertApiV2 = {
+  ok: boolean;
+  certificate?: {
+    id: number;
+    certificate_id?: string;
+    serial?: string;
+    date?: string;             // "YYYY-MM-DD"
+    status?: number;           // 0/1
+    grade?: string | null;     // "Excellent" | "Very Good" | "Good"
+    student?: { id: number; name_ar?: string; name_en?: string };
+    activity?: {
+      is_activity_id: number;
+      activity_id: number;
+      course_name_ar?: string;
+      course_name_en?: string;
+      hours?: number;
+    };
+  };
+};
+
+/* ---------------- Helpers ---------------- */
 type NormalizedCourse = {
   title: string;
   descriptionHtml?: string;
   meta?: { days?: number; hours?: number; cost?: number };
 };
-
-function normalizeCourse(json: GetCourseResponse): NormalizedCourse {
+function normalizeCourse(json: GetCourseResponse, titleFromNav?: string): NormalizedCourse {
   const c = json.course!;
+  const title = titleFromNav || c.name_ar || c.name_en || c.name || 'الدورة';
   return {
-    title: c.name_ar || c.name_en || c.name || 'الدورة',
+    title,
     descriptionHtml: c.course_head_lines || undefined,
     meta: { days: c.days, hours: c.hours, cost: c.cost },
   };
@@ -83,39 +105,25 @@ function htmlToText(html?: string) {
     .trim();
 }
 
-/** Props your CertificatePreview expects */
-type CertificatePreviewProps = {
-  serial: string;
-  nameAr: string;
-  nameEn?: string;
-  courseAr: string;
-  courseEn?: string;
-  hours?: number;
-  date?: string;
-  grade?: string;
-  authorized: boolean;
-  showShareButtons?: boolean;
-};
+/** Adapt the new cert API → props for CertificatePreviewNami AR/EN */
+function normalizeCertForPreviews(cert?: CertApiV2['certificate']) {
+  if (!cert) return undefined;
 
-/** Adapt the cert API shape → CertificatePreview props */
-function normalizeCertificateForPreview(json: any): CertificatePreviewProps | undefined {
-  if (!json?.ok || !json.certificate) return undefined;
-  const c = json.certificate;
-
-  // Derive authorized: treat status===1 as authorized, else false
-  const authorized = Number(c.status) === 1;
+  const arName = cert.student?.name_ar || '-';
+  const enName = cert.student?.name_en || '-';
+  const courseAr = cert.activity?.course_name_ar || '-';
+  const courseEn = cert.activity?.course_name_en || '-';
+  const hours = cert.activity?.hours ?? undefined;
 
   return {
-    serial: c.certificate_id || c.serial || '-',
-    nameAr: c.student?.name ?? '-',                // API provides a single name
-    nameEn: undefined,                              // not provided by API
-    courseAr: c.activity?.course_name ?? '-',       // API provides a single course name
-    courseEn: undefined,
-    hours: c.course?.hours ?? undefined,            // only if backend adds it
-    date: c.date ?? undefined,
-    grade: c.grade ?? undefined,
-    authorized,
-    showShareButtons: true,
+    serial: cert.serial,
+    date: cert.date,
+    grade: cert.grade ?? undefined,
+    hours,
+    arName,
+    enName,
+    courseAr,
+    courseEn,
   };
 }
 
@@ -225,9 +233,55 @@ function MediaTab({ route }: any) {
 }
 
 function CertificateTab({ route }: any) {
-  const { certificate } = route.params as { certificate?: CertificatePreviewProps };
+  // props passed via initialParams
+  const { certPack } = route.params as {
+    certPack?: {
+      serial?: string | null;
+      date?: string | null;
+      grade?: string | null;
+      hours?: number | null | undefined;
+      arName: string;
+      enName: string;
+      courseAr: string;
+      courseEn: string;
+    };
+  };
 
-  if (!certificate) {
+  // Refs to capture views
+  const arShotRef = useRef<View>(null);
+  const enShotRef = useRef<View>(null);
+
+  const saveImage = async (ref: React.RefObject<View>) => {
+    try {
+      const uri = await captureRef(ref, { format: 'png', quality: 1, result: 'tmpfile' });
+      await  CameraRoll.save(uri, { type: 'photo' });
+      Alert.alert('تم الحفظ', 'تم حفظ الصورة في الاستوديو.');
+    } catch (e: any) {
+      Alert.alert('خطأ', e?.message || 'تعذر حفظ الصورة.');
+    }
+  };
+
+  const shareImage = async (ref: React.RefObject<View>) => {
+    try {
+      const uri = await captureRef(ref, { format: 'png', quality: 1, result: 'tmpfile' });
+      await Share.share({ url: uri, message: 'Tanami Train Certificate' });
+    } catch {
+      // user may cancel
+    }
+  };
+
+  const ActionRow = ({ onSave, onShare }: { onSave: () => void; onShare: () => void }) => (
+    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 12 }}>
+      <TouchableOpacity style={styles.primaryBtn} onPress={onSave}>
+        <Text style={styles.primaryText}>حفظ كصورة</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#145a43' }]} onPress={onShare}>
+        <Text style={styles.primaryText}>مشاركة</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (!certPack) {
     return (
       <View style={styles.center}>
         <Text style={styles.h1}>شهادتي</Text>
@@ -236,9 +290,47 @@ function CertificateTab({ route }: any) {
     );
   }
 
+  const { serial, date, grade, hours, arName, enName, courseAr, courseEn } = certPack;
+
+  const qrUri = serial
+    ? `https://tanamitrain.com/tanamiAdmin/api/certi/qr?serial=${encodeURIComponent(serial)}&s=5&qz=2`
+    : undefined;
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff1e2', padding: 16 }}>
-      <CertificatePreview {...certificate} />
+    <ScrollView style={{ flex: 1, backgroundColor: '#fff1e2', padding: 16 }} contentContainerStyle={{ paddingBottom: 48 }}>
+      {/* Arabic certificate */}
+      <ViewShot ref={arShotRef} options={{ format: 'png', quality: 1 }}>
+        <CertificatePreviewNami
+          lang="ar"
+          name={arName}
+          course={courseAr}
+          hours={hours ?? undefined}
+          grade={grade ?? undefined}     // auto-mapped to Arabic inside component
+          date={date ?? undefined}
+          serial={serial ?? undefined}
+          qrSource={qrUri ? { uri: qrUri } : undefined}
+        />
+      </ViewShot>
+      <ActionRow onSave={() => saveImage(arShotRef)} onShare={() => shareImage(arShotRef)} />
+
+      <View style={{ height: 24 }} />
+
+      {/* English certificate */}
+      <ViewShot ref={enShotRef} options={{ format: 'png', quality: 1 }}>
+        <CertificatePreviewNami
+          lang="en"
+          name={enName}
+          course={courseEn}
+          hours={hours ?? undefined}
+          grade={grade ?? undefined}     // stays in English
+          date={date ?? undefined}
+          serial={serial ?? undefined}
+          qrSource={qrUri ? { uri: qrUri } : undefined}
+        />
+      </ViewShot>
+      <ActionRow onSave={() => saveImage(enShotRef)} onShare={() => shareImage(enShotRef)} />
+
+      <View style={{ height: 24 }} />
     </ScrollView>
   );
 }
@@ -248,79 +340,57 @@ function CertificateTab({ route }: any) {
 export default function CourseTabsScreen({ route }: any) {
   const { courseId, activityId, studentId: studentIdParam, title: titleFromNav } = route.params ?? {};
   const { token, user } = useAuth();
-
-  const studentId = studentIdParam ?? user?.id; // adjust to your auth shape if needed
+  const studentId = studentIdParam ?? user?.id;
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [course, setCourse] = useState<NormalizedCourse | null>(null);
   const [media, setMedia] = useState<{ images: ActivityFile[]; docs: ActivityFile[] }>({ images: [], docs: [] });
-  const [certificate, setCertificate] = useState<CertificatePreviewProps | undefined>(undefined);
+  const [certPack, setCertPack] = useState<ReturnType<typeof normalizeCertForPreviews> | undefined>(undefined);
 
   useEffect(() => {
-    let mounted = true;
-
     (async () => {
-      if (!courseId) {
-        setErr('لا يوجد معرّف للدورة.');
-        setLoading(false);
-        return;
-      }
-      if (!activityId) {
-        setErr('لا يوجد معرّف للنشاط (activityId).');
-        setLoading(false);
-        return;
-      }
-
       try {
-        setLoading(true); setErr(null);
-      
-        let mergedCourse: NormalizedCourse | null = null;
-        try {
-          const courseJson = await api.fetchCourseById(token ?? undefined, String(courseId));
-          if (!courseJson?.ok || !courseJson?.course) throw new Error('bad course payload');
-          const norm = normalizeCourse(courseJson);
-          mergedCourse = { ...norm, title: titleFromNav || norm.title };
-          setCourse(mergedCourse);
-        } catch (e: any) {
-          console.log('❌ COURSE fetch failed:', e?.message, e);
-          throw new Error('COURSE fetch failed: ' + (e?.message ?? ''));
-        }
-      
-        let images: ActivityFile[] = [], docs: ActivityFile[] = [];
+        if (!courseId) throw new Error('لا يوجد معرّف للدورة.');
+        if (!activityId) throw new Error('لا يوجد معرّف للنشاط (activityId).');
+
+        setLoading(true);
+        setErr(null);
+
+        // 1) Course
+        const courseJson: GetCourseResponse = await api.fetchCourseById(token ?? undefined, String(courseId));
+        if (!courseJson?.ok || !courseJson?.course) throw new Error('تعذر جلب بيانات الدورة.');
+        setCourse(normalizeCourse(courseJson, titleFromNav));
+
+        // 2) Media (non-blocking if it fails)
         try {
           const filesJson = await api.fetchActivityFiles(token ?? undefined, String(activityId));
-          ({ images, docs } = splitActivityFiles(filesJson.files || []));
+          const { images, docs } = splitActivityFiles(filesJson.files || []);
           setMedia({ images, docs });
-        } catch (e: any) {
-          console.log('❌ FILES fetch failed:', e?.message, e);
-          // don't block the screen if media fails
+        } catch {
           setMedia({ images: [], docs: [] });
         }
-      
-        try {
-          if (studentId) {
-            const certJson = await api.fetchCertificateByStudentActivity(token ?? undefined, String(activityId), String(studentId));
-            const cert = normalizeCertificateForPreview(certJson);
-            setCertificate(cert);
+
+        // 3) Certificate (new v2 fields with AR/EN names)
+        if (studentId) {
+          try {
+            // Make sure your api method calls the updated endpoint that returns name_ar/name_en & course_name_ar/course_name_en
+            const certJson: CertApiV2 = await api.fetchCertificateByStudentActivity(token ?? undefined, String(activityId), String(studentId));
+            const normalized = normalizeCertForPreviews(certJson?.certificate);
+            setCertPack(normalized);
+          } catch {
+            setCertPack(undefined);
           }
-        } catch (e: any) {
-          console.log('❌ CERT fetch failed:', e?.message, e);
-          // not fatal
-          setCertificate(undefined);
+        } else {
+          setCertPack(undefined);
         }
       } catch (e: any) {
-        console.error('❌ CourseTabsScreen load error:', e);
         setErr(e?.message || 'حدث خطأ غير متوقع');
         setCourse(null);
       } finally {
         setLoading(false);
       }
     })();
-
-    return () => {
-      mounted = false;
-    };
   }, [courseId, activityId, studentId, token, titleFromNav]);
 
   if (loading) {
@@ -369,7 +439,7 @@ export default function CourseTabsScreen({ route }: any) {
         name="Certificate"
         component={CertificateTab}
         options={{ title: 'الشهادة' }}
-        initialParams={{ certificate }}
+        initialParams={{ certPack }}
       />
     </Tab.Navigator>
   );
@@ -412,8 +482,15 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, backgroundColor: '#fff1e2', alignItems: 'center', justifyContent: 'center', padding: 16 },
   loader: { flex: 1, backgroundColor: '#fff1e2', alignItems: 'center', justifyContent: 'center' },
+
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40 },
   emptyText: { fontFamily: 'NotoKufiArabic-Regular', color: '#666' },
+
+  primaryBtn: {
+    backgroundColor: '#0f4f30',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  primaryText: { color: '#eceadf', fontFamily: 'NotoKufiArabic-Bold' },
 });
-
-
