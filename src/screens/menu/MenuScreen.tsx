@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
 import { Linking } from 'react-native';
+import { rtlStyles } from '../../theme/rtl';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const Row = ({
@@ -22,18 +23,19 @@ const Row = ({
 }) => (
   <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.75}>
     <Icon
-      name={icon}
-      size={22}
-      color={danger ? '#d9534f' : '#0f4f30'}
-      style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
-    />
-    <Text style={[styles.rowText, danger && styles.rowTextDanger]}>{title}</Text>
-    <Icon
       name={I18nManager.isRTL ? 'chevron-left' : 'chevron-right'}
       size={22}
       color={danger ? '#d9534f' : '#999'}
-      style={{ marginLeft: 'auto' }}
     />
+    <View style={styles.rowMain}>
+      <Text style={[styles.rowText, danger && styles.rowTextDanger]}>{title}</Text>
+      <Icon
+        name={icon}
+        size={22}
+        color={danger ? '#d9534f' : '#0f4f30'}
+        style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
+      />
+    </View>
   </TouchableOpacity>
 );
 
@@ -100,13 +102,7 @@ export default function MenuScreen() {
     <View style={styles.container}>
       {/* بطاقة بسيطة لبيانات المستخدم */}
       <View style={styles.headerCard}>
-        <Icon
-          name="account-circle"
-          size={48}
-          color="#0f4f30"
-          style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
-        />
-        <View style={{ marginHorizontal: 8, flex: 1 }}>
+        <View style={styles.headerMain}>
           <Text style={styles.headerTitle}>
             {isAuthenticated ? 'أهلًا بك' : 'مرحبًا'}
           </Text>
@@ -114,6 +110,12 @@ export default function MenuScreen() {
             {isAuthenticated ? displayName: 'سجّل الدخول للوصول لكل الميزات'}
           </Text>
         </View>
+        <Icon
+          name="account-circle"
+          size={48}
+          color="#0f4f30"
+          style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
+        />
       </View>
 
       <View style={styles.card}>
@@ -163,10 +165,11 @@ export default function MenuScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff1e2', padding: 16 },
+  container: { flex: 1, backgroundColor: '#fff1e2', padding: 16, direction: 'rtl' },
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#eceadf',
     borderRadius: 14,
     padding: 12,
@@ -177,17 +180,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  headerMain: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
   headerTitle: {
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 16,
     color: '#111',
-    textAlign: 'right',
+    textAlign: 'left',
+    writingDirection: 'rtl',
   },
   headerSub: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 12,
     color: '#6b7280',
-    textAlign: 'right',
+    textAlign: 'left',
+    writingDirection: 'rtl',
     marginTop: 2,
   },
   card: {
@@ -202,15 +211,28 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    ...rtlStyles.rowCenter,
+    justifyContent: 'space-between',
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#eee',
     gap: 12,
   },
-  rowText: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, color: '#111' },
+  rowMain: {
+    ...rtlStyles.rowCenter,
+    flex: 1,
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  rowText: {
+    flex: 1,
+    fontFamily: 'NotoKufiArabic-Bold',
+    fontSize: 16,
+    color: '#111',
+    textAlign: 'left',
+    writingDirection: 'rtl',
+  },
   rowTextDanger: { color: '#d9534f' },
   divider: { height: 12, backgroundColor: 'transparent' },
 });

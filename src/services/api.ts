@@ -17,6 +17,7 @@ import {
   RegisterRequestResponse,
   UpdateProfileBody,
 } from '../types/api';
+import { OtpDeliveryMethod, OTP_PROXY_TOPIC } from '../auth/otp';
 
 /* ----------------------------- Debug helpers ----------------------------- */
 
@@ -157,11 +158,31 @@ async function jsonFetchWithTimeout(url: string, opts: RequestInit = {}, timeout
 
 /* -------------------------------- Endpoints ------------------------------ */
 
+function buildOtpBody(
+  mobile: string,
+  reason: 'initial' | 'resend' | 'password_reset',
+  deliveryMethod: OtpDeliveryMethod,
+) {
+  return {
+    mobile,
+    reason,
+    delivery_method: deliveryMethod,
+    ...(deliveryMethod === 'sms' ? { proxy_topic: OTP_PROXY_TOPIC } : {}),
+  };
+}
+
 export const api = {
   // Auth
-  signup: (mobile: string, password: string, email?: string) =>
+  signup: (
+    mobile: string,
+    password: string,
+    email?: string,
+    deliveryMethod: OtpDeliveryMethod = 'telegram',
+  ) =>
     request<{ ok: true; message: string; mobile: string }>(
-      'signup', 'POST', { mobile, password, email }
+      'signup',
+      'POST',
+      { mobile, password, email, otp_delivery_method: deliveryMethod },
     ),
 
   verify: (mobile: string, code: string) =>
@@ -236,11 +257,23 @@ export const api = {
     ),
 
   // OTP via Telegram — this one stays under mobile-app (unless you moved it)
-  sendOtp: (mobile: string, reason: 'initial' | 'resend' | 'password_reset' = 'initial') =>
-    request<{ ok: boolean; message?: string }>('send-otp', 'POST', { mobile, reason }),
+  sendOtp: (
+    mobile: string,
+    reason: 'initial' | 'resend' | 'password_reset' = 'initial',
+    deliveryMethod: OtpDeliveryMethod = 'telegram',
+  ) =>
+    request<{ ok: boolean; message?: string }>(
+      'send-otp',
+      'POST',
+      buildOtpBody(mobile, reason, deliveryMethod),
+    ),
 
-  resendOtp: (mobile: string) =>
-    request<{ ok: boolean; message?: string }>('send-otp', 'POST', { mobile, reason: 'resend' }),
+  resendOtp: (mobile: string, deliveryMethod: OtpDeliveryMethod = 'telegram') =>
+    request<{ ok: boolean; message?: string }>(
+      'send-otp',
+      'POST',
+      buildOtpBody(mobile, 'resend', deliveryMethod),
+    ),
 
   // FCM / Inbox (legacy server paths live under BASE_ROOT)
   async registerPushToken(body: RegisterPushBody) {

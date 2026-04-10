@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import { api } from '../services/api';
+import { mapAuthError, OtpDeliveryMethod } from '../auth/otp';
 import { getOrCreateDeviceId } from '../util/deviceId';
 
 // ⬇️ NEW: import your storage helpers for profile id
@@ -33,7 +34,12 @@ type AuthContextType = {
   isAuthenticated: boolean;
 
   // actions
-  signUp: (mobile: string, password: string, email?: string) => Promise<void>;
+  signUp: (
+    mobile: string,
+    password: string,
+    email?: string,
+    deliveryMethod?: OtpDeliveryMethod,
+  ) => Promise<void>;
   verifyOtp: (mobile: string, code: string) => Promise<void>;
   signIn: (mobile: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -134,12 +140,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })();
   }, []);
 
-  const signUp = async (mobile: string, password: string, email?: string) => {
+  const signUp = async (
+    mobile: string,
+    password: string,
+    email?: string,
+    deliveryMethod: OtpDeliveryMethod = 'telegram',
+  ) => {
     try {
-      await api.signup(mobile, password, email);
-      Alert.alert('تم', 'تم إرسال رمز التحقق إلى هاتفك.');
+      await api.signup(mobile, password, email, deliveryMethod);
+      Alert.alert('تم', 'تم إنشاء الحساب بنجاح. أكمل التحقق لاستلام الرمز.');
     } catch (e: any) {
-      Alert.alert('خطأ', mapError(e.message));
+      Alert.alert('خطأ', mapAuthError(e.message));
       throw e;
     }
   };
@@ -156,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // register after verification (user is now logged in)
       await registerFcmForProfile(profileId ?? null);
     } catch (e: any) {
-      Alert.alert('خطأ', mapError(e.message));
+      Alert.alert('خطأ', mapAuthError(e.message));
       throw e;
     }
   };
@@ -173,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // register after login
       await registerFcmForProfile(profileId ?? null);
     } catch (e: any) {
-      Alert.alert('خطأ', mapError(e.message));
+      Alert.alert('خطأ', mapAuthError(e.message));
       throw e;
     }
   };
@@ -256,19 +267,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
-
-// Error mapping from server codes → Arabic messages
-function mapError(code: string) {
-  switch (code) {
-    case 'mobile_and_password_required': return 'الرجاء إدخال الجوال وكلمة المرور.';
-    case 'mobile_already_registered': return 'رقم الجوال مسجّل مسبقًا.';
-    case 'email_already_registered': return 'البريد الإلكتروني مسجّل مسبقًا.';
-    case 'invalid_credentials': return 'بيانات الدخول غير صحيحة.';
-    case 'not_verified': return 'الحساب غير مفعّل. الرجاء التحقق بالرمز.';
-    case 'otp_incorrect': return 'رمز التحقق غير صحيح.';
-    case 'otp_expired': return 'انتهت صلاحية الرمز. اطلب رمزًا جديدًا.';
-    case 'rate_limited': return 'يرجى الانتظار قليلًا قبل إعادة الإرسال.';
-    case 'fullname_required': return 'الاسم الكامل مطلوب.';
-    default: return 'حدث خطأ. حاول مجددًا.';
-  }
-}

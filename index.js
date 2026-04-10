@@ -7,7 +7,9 @@ import App from './App';
 import { name as appName } from './app.json';
 import messaging from '@react-native-firebase/messaging';
 import { AuthProvider } from './src/context/AuthContext';  // 👈 add
+import { configureAppRTL } from './src/theme/rtl';
 
+configureAppRTL();
 
 // REQUIRED: background/quit handler (runs in Headless JS)
 messaging().setBackgroundMessageHandler(async remoteMessage => {

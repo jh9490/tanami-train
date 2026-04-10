@@ -37,6 +37,7 @@ import MyCourses from '../screens/MyCoursesScreen';
 import CourseTabs from '../screens/CourseTabsScreen';
 import MyRegistrationRequests from '../screens/MyRegistrationRequests';
 import MyPhotosScreen from '../screens/MyPhotosScreen';
+import { rtlStyles } from '../theme/rtl';
 
 /* ===== Types ===== */
 export type RootStackParamList = {
@@ -100,6 +101,7 @@ const headerCommon = {
   headerTitleStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 18 },
   headerTintColor: '#cbae82',
   headerTitleAlign: 'center' as const,
+  contentStyle: rtlStyles.screen,
 };
 
 /* ===== Menu stack (for “القائمة” tab) ===== */
@@ -231,7 +233,9 @@ function MainTabs() {
           height: 75 + insets.bottom,
           paddingBottom: Math.max(10, insets.bottom),
           paddingTop: 8,
+          direction: 'rtl',
         },
+        sceneStyle: rtlStyles.screen,
         tabBarLabelStyle: { fontSize: 12, fontFamily: 'NotoKufiArabic-Bold' },
         tabBarActiveTintColor: '#cbae82',
         tabBarInactiveTintColor: 'gray',
@@ -290,7 +294,7 @@ function Root() {
 export default function AppNavigator() {
   return (
     <AuthProvider>
-      <NavigationContainer>
+      <NavigationContainer direction="rtl">
         <Root />
       </NavigationContainer>
     </AuthProvider>

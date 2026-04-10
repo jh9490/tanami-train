@@ -2,6 +2,7 @@
 import React from 'react';
 import { I18nManager } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { OtpDeliveryMethod } from '../auth/otp';
 import SignInScreen from './auth/SignInScreen';
 import SignUpScreen from './auth/SignUpScreen';
 import OtpVerifyScreen from './auth/VerifyScreen';
@@ -12,7 +13,11 @@ I18nManager.forceRTL(true);
 export type AuthStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
-  OtpVerify: { phone: string; context: 'signup' | 'reset' };
+  OtpVerify: {
+    mobile: string;
+    context: 'signup' | 'signin';
+    deliveryMethod: OtpDeliveryMethod;
+  };
   ResetPassword: undefined;
 };
 

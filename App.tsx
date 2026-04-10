@@ -1,6 +1,13 @@
 // App.tsx
 import React, { useEffect, useState } from 'react';
-import { Text, TextInput } from 'react-native';
+import {
+  FlatList,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import SplashScreen from './src/screens/SplashScreen';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -11,10 +18,28 @@ import { api } from './src/services/api';
 import { getOrCreateDeviceId } from './src/util/deviceId';
 import { useAuth } from './src/context/AuthContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { configureAppRTL, rtlStyles } from './src/theme/rtl';
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
   const { user, profile, isAuthenticated } = useAuth();
+
+  const appendStyleDefault = (Component: any, stylePatch: object) => {
+    Component.defaultProps = Component.defaultProps || {};
+    Component.defaultProps.style = [Component.defaultProps.style || {}, stylePatch];
+  };
+
+  const appendContentStyleDefault = (Component: any, stylePatch: object) => {
+    Component.defaultProps = Component.defaultProps || {};
+    Component.defaultProps.contentContainerStyle = [
+      Component.defaultProps.contentContainerStyle || {},
+      stylePatch,
+    ];
+  };
+
+  useEffect(() => {
+    configureAppRTL();
+  }, []);
 
   // --- Disable font scaling globally ---
   useEffect(() => {
@@ -24,7 +49,12 @@ const App = () => {
     RNText.defaultProps.allowFontScaling = false;
     RNText.defaultProps.style = [
       RNText.defaultProps.style || {},
-      { fontFamily: 'NotoKufiArabic-Regular' , color : "#111"},
+      {
+        color: '#111',
+        fontFamily: 'NotoKufiArabic-Regular',
+        textAlign: 'right',
+        writingDirection: 'rtl',
+      },
     ];
   
     // TextInput defaults
@@ -33,10 +63,23 @@ const App = () => {
     RNTextInput.defaultProps.allowFontScaling = false;
     RNTextInput.defaultProps.style = [
       RNTextInput.defaultProps.style || {},
-      { color: '#111', fontFamily: 'NotoKufiArabic-Regular' },
+      {
+        color: '#111',
+        fontFamily: 'NotoKufiArabic-Regular',
+        textAlign: 'right',
+        writingDirection: 'rtl',
+      },
     ];
     RNTextInput.defaultProps.placeholderTextColor = '#8a8a8a';
     RNTextInput.defaultProps.selectionColor = '#0f4f30';
+
+    // Layout containers default to RTL as well so screens stay Arabic-first
+    appendStyleDefault(View as any, rtlStyles.screen);
+    appendStyleDefault(ScrollView as any, rtlStyles.screen);
+    appendContentStyleDefault(ScrollView as any, rtlStyles.screen);
+    appendStyleDefault(FlatList as any, rtlStyles.screen);
+    appendContentStyleDefault(FlatList as any, rtlStyles.screen);
+    appendStyleDefault(TouchableOpacity as any, rtlStyles.screen);
   }, []);
 
   // --- Notifications setup ---
@@ -88,7 +131,7 @@ const App = () => {
   }, [showSplash, isAuthenticated, profile?.id, user?.id]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={[{ flex: 1 }, rtlStyles.screen]}>
       {showSplash ? (
         <SplashScreen onDone={() => setShowSplash(false)} />
       ) : (
