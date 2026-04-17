@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Native build output
+android/.gradle/
+android/build/
+android/app/build/
+ios/build/
+
+# Bundled/generated assets
+android/app/src/main/assets/index.android.bundle
+
+# Logs and temp files
+*.log
+*.tmp
+*.temp
+
+# macOS / editor noise
+.DS_Store
+
+# Large binary assets that are usually irrelevant to code search
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ttf
+*.otf
+*.pdf
+*.keystore
+*.jar

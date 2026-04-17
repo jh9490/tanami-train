@@ -7,7 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 /* Providers */
-import { AuthProvider } from '../context/AuthContext'; // ⬅️ change to ../providers/AuthProvider if that's your path
+import { AuthProvider, useAuth } from '../context/AuthContext';
 
 /* Screens */
 import SplashScreen from '../screens/SplashScreen';
@@ -19,6 +19,9 @@ import MenuScreen from '../screens/menu/MenuScreen';
 import VerifyCertificateScreen from '../screens/VerifyCertificateScreen';
 import ContactUsScreen from '../screens/ContactUsScreen';
 import OurLocationScreen from '../screens/OurLocationScreen';
+
+/* screens */
+import CVFormScreen from '../screens/cv/CVFormScreen';
 
 /* Auth screens */
 import SignInScreen from '../screens/auth/SignInScreen';
@@ -56,6 +59,7 @@ export type MainTabParamList = {
   Courses: undefined;
   Gallery: undefined;
   MenuRoot: undefined;
+  CVGenerator: undefined;
 };
 
 export type MenuStackParamList = {
@@ -200,12 +204,14 @@ function UserStack() {
 /* ===== Bottom Tabs ===== */
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { isAuthenticated } = useAuth();
   const getHeaderTitle = (name: keyof MainTabParamList) => {
     switch (name) {
       case 'Home': return 'الرئيسية';
       case 'Courses': return 'الحقائب';
       case 'Gallery': return 'المعرض';
       case 'MenuRoot': return 'القائمة';
+      case 'CVGenerator': return 'سيرتي';
       default: return 'تنامي';
     }
   };
@@ -217,7 +223,8 @@ function MainTabs() {
           const iconName =
             route.name === 'Home' ? 'home' :
               route.name === 'Courses' ? 'book' :
-                route.name === 'Gallery' ? 'image' : 'menu';
+                route.name === 'Gallery' ? 'image' : 
+                  route.name === 'CVGenerator' ? 'description' : 'menu';
           const transform = I18nManager.isRTL ? [{ scaleX: -1 }] : undefined;
           return <Icon name={iconName} size={size} color={color} style={{ transform }} />;
         },
@@ -244,6 +251,9 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'الرئيسية' }} />
       <Tab.Screen name="Courses" component={CoursesScreen} options={{ tabBarLabel: 'الحقائب' }} />
       <Tab.Screen name="Gallery" component={GalleryScreen} options={{ tabBarLabel: 'المعرض' }} />
+      {isAuthenticated && (
+        <Tab.Screen name="CVGenerator" component={CVFormScreen} options={{ tabBarLabel: 'سيرتي' }} />
+      )}
       <Tab.Screen name="MenuRoot" component={MenuStack} options={{ tabBarLabel: 'القائمة', headerShown: false }} />
     </Tab.Navigator>
   );

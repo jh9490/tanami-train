@@ -6457,6 +6457,11 @@ react-native-gesture-handler@^2.27.2, "react-native-gesture-handler@>= 2.0.0", r
     hoist-non-react-statics "^3.3.0"
     invariant "^2.2.4"
 
+react-native-html-to-pdf@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.npmjs.org/react-native-html-to-pdf/-/react-native-html-to-pdf-1.3.0.tgz"
+  integrity sha512-UCbQO1k5yeajaJrEF7Wqq8ojdgpxsTbICQvtorXmuO1LkU/a6B3/tZyLes4zXCiq/5nTMTNA/k9m5bYStg5S0Q==
+
 react-native-image-pan-zoom@^2.1.12:
   version "2.1.12"
   resolved "https://registry.npmjs.org/react-native-image-pan-zoom/-/react-native-image-pan-zoom-2.1.12.tgz"
@@ -6533,10 +6538,10 @@ react-native-screens@^4.11.1, "react-native-screens@>= 4.0.0":
     react-native-is-edge-to-edge "^1.1.7"
     warn-once "^0.1.0"
 
-react-native-share@^12.2.0:
-  version "12.2.0"
-  resolved "https://registry.npmjs.org/react-native-share/-/react-native-share-12.2.0.tgz"
-  integrity sha512-f6MB9BsKa9xVvu0DKbxq5jw4IyYHqQeqUlCNkD8eAFoJx6SD31ObPAn7SQ6NG9AOuhCy6aYuSJYJvx25DaoMZQ==
+react-native-share@^12.2.6:
+  version "12.2.6"
+  resolved "https://registry.npmjs.org/react-native-share/-/react-native-share-12.2.6.tgz"
+  integrity sha512-K9jZCQaTIqSNG37kMVygU1rflVMJm2g0ikslnbbmQ7EgsckYpw7ipePyp01E64hG+HrWNl+z9ZnFWLCC6H+Tiw==
 
 react-native-svg@^15.13.0:
   version "15.13.0"
