@@ -108,7 +108,7 @@ function parseSerialFromQrPayload(payload: string): string | null {
 }
 
 /** Capture a ViewShot ref and save to Photos */
-async function saveCertificateAsImage(ref: React.RefObject<View>) {
+async function saveCertificateAsImage(ref: React.RefObject<View | null>) {
   try {
     const uri = await captureRef(ref, { format: 'png', quality: 1 });
     await CameraRoll.save(uri, { type: 'photo', album: 'Certificates' });
@@ -120,7 +120,7 @@ async function saveCertificateAsImage(ref: React.RefObject<View>) {
 }
 
 /** Capture a ViewShot ref and open the native share sheet */
-async function shareCertificate(ref: React.RefObject<View>, filename = 'certificate.png') {
+async function shareCertificate(ref: React.RefObject<View | null>, filename = 'certificate.png') {
   try {
     const uri = await captureRef(ref, { format: 'png', quality: 1, result: 'base64' });
     const path = `${RNFS.CachesDirectoryPath}/${filename}`;

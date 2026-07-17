@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, Modal,
-  StyleSheet, ActivityIndicator, RefreshControl
+  StyleSheet, RefreshControl
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import AppLoading from './components/AppLoading';
 
 type InboxItem = {
   id: number | string;
@@ -132,7 +133,7 @@ export default function MyNotificationsScreen({ navigation }: any) {
     <View style={{ flex: 1, backgroundColor: '#fff1e2', padding: 12 }}>
       <View style={s.card}>
         {loading ? (
-          <ActivityIndicator color="#0f4f30" />
+          <AppLoading style={{ backgroundColor: 'transparent' }} />
         ) : error ? (
           <View style={{ padding: 16 }}>
             <Text style={s.err}>{error}</Text>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking,
-  AppState,
-  AppStateStatus,
   Modal,
   FlatList,
   Pressable,
@@ -17,19 +14,14 @@ import {
   ScrollView,
 } from 'react-native';
 import {
-  getOtpDeliveryActionLabel,
   getOtpDeliverySuccessMessage,
   mapAuthError,
-  OtpDeliveryMethod,
-  OTP_DELIVERY_OPTIONS,
 } from '../../auth/otp';
 import { authColors, authStyles } from '../../auth/ui';
 import { api } from '../../services/api';
 import { buildE164, digitsOnly, stripLeadingZero } from '../../util/phone';
 import FlagIcon from '../../util/FlagIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const BOT_USERNAME = 'TanamiTrain_bot';
 
 const ARAB_COUNTRIES = [
   { nameAr: 'السعودية', iso: 'SA', dial: '966' },
@@ -56,164 +48,29 @@ const ARAB_COUNTRIES = [
   { nameAr: 'جزر القمر', iso: 'KM', dial: '269' },
 ];
 
-async function openTelegramDeepLink(username: string, payload: string) {
-  const tgUrl = `tg://resolve?domain=${username}&start=${encodeURIComponent(payload)}`;
-  const httpUrl = `https://t.me/${username}?start=${encodeURIComponent(payload)}`;
-  try {
-    const supported = await Linking.canOpenURL(tgUrl);
-    if (supported) return Linking.openURL(tgUrl);
-    return Linking.openURL(httpUrl);
-  } catch {
-    Alert.alert('تعذر فتح تيليجرام', `افتح هذا الرابط يدوياً:\n${httpUrl}`);
-  }
-}
-
 const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [country, setCountry] = useState(() => ARAB_COUNTRIES.find(c => c.iso === 'SY') || ARAB_COUNTRIES[0]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mobileLocal, setMobileLocal] = useState('');
-  const [checking, setChecking] = useState(false);
-  const [linked, setLinked] = useState<boolean | null>(null);
   const [sending, setSending] = useState(false);
-  const [deliveryMethod, setDeliveryMethod] = useState<OtpDeliveryMethod>('telegram');
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [verifying, setVerifying] = useState(false);
-  const [polling, setPolling] = useState(false);
-  const [pollSecondsLeft, setPollSecondsLeft] = useState(0);
-
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const secondTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const fullMobile = useMemo(
     () => buildE164(country.dial, mobileLocal),
     [country, mobileLocal]
   );
 
-  const clearAllTimers = useCallback(() => {
-    if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
-    if (pollTimeoutRef.current) { clearTimeout(pollTimeoutRef.current); pollTimeoutRef.current = null; }
-    if (secondTimerRef.current) { clearInterval(secondTimerRef.current); secondTimerRef.current = null; }
-    setPolling(false);
-    setPollSecondsLeft(0);
-  }, []);
-
-  const checkStatusOnce = useCallback(async (_mobile?: string) => {
-    const m = (_mobile ?? fullMobile).trim();
-    if (!m) return null;
-    if (deliveryMethod === 'sms') {
-      setLinked(true);
-      return true;
-    }
-    try {
-      const status = await api.telegramStatus(m);
-      setLinked(status.linked);
-      return status.linked;
-    } catch (e: any) {
-      console.warn('[Reset] telegram-status error:', e?.message);
-      setLinked(null);
-      return null;
-    }
-  }, [deliveryMethod, fullMobile]);
-
-  useEffect(() => () => clearAllTimers(), [clearAllTimers]);
-
-  const startPollingStatus = useCallback(async (totalSeconds = 60, everyMs = 3000) => {
-    if (deliveryMethod === 'sms') return;
-
-    clearAllTimers();
-    setPolling(true);
-    setPollSecondsLeft(totalSeconds);
-
-    secondTimerRef.current = setInterval(() => {
-      setPollSecondsLeft(s => (s > 0 ? s - 1 : 0));
-    }, 1000);
-
-    const first = await checkStatusOnce();
-    if (first) {
-      clearAllTimers();
-      return;
-    }
-
-    pollIntervalRef.current = setInterval(async () => {
-      const ok = await checkStatusOnce();
-      if (ok) clearAllTimers();
-    }, everyMs);
-
-    pollTimeoutRef.current = setTimeout(() => {
-      clearAllTimers();
-    }, totalSeconds * 1000);
-  }, [checkStatusOnce, clearAllTimers, deliveryMethod]);
-
-  useEffect(() => {
-    if (deliveryMethod === 'sms') {
-      setChecking(false);
-      setLinked(true);
-      clearAllTimers();
-      return;
-    }
-
-    if (!fullMobile.trim()) {
-      setLinked(null);
-      setChecking(false);
-      return;
-    }
-
-    setChecking(true);
-    checkStatusOnce().finally(() => setChecking(false));
-  }, [checkStatusOnce, clearAllTimers, deliveryMethod, fullMobile]);
-
-  useEffect(() => {
-    if (deliveryMethod === 'sms') return;
-
-    const sub = AppState.addEventListener('change', async (next) => {
-      const prev = appStateRef.current;
-      appStateRef.current = next;
-      if (prev.match(/inactive|background/) && next === 'active' && fullMobile.trim()) {
-        const ok = await checkStatusOnce();
-        if (!ok) startPollingStatus(30, 3000);
-      }
-    });
-    return () => sub.remove();
-  }, [checkStatusOnce, deliveryMethod, fullMobile, startPollingStatus]);
-
-  const onLinkTelegram = async () => {
-    if (!digitsOnly(mobileLocal)) return Alert.alert('تنبيه', 'يرجى إدخال رقم الجوال');
-    try {
-      const { payload, code: shortCode } = await api.telegramCreateLink(fullMobile);
-      await openTelegramDeepLink(BOT_USERNAME, payload);
-      Alert.alert(
-        'معلومة',
-        `بعد الضغط على "ابدأ" داخل تيليجرام سنحاول ربط الحساب تلقائياً.${shortCode ? `\nإذا كانت المحادثة مفتوحة مسبقاً، أرسل هذا الرمز هناك: ${shortCode}` : ''}`
-      );
-      startPollingStatus(60, 3000);
-    } catch (e: any) {
-      Alert.alert('خطأ', mapAuthError(e?.response?.data?.error || e?.message));
-    }
-  };
-
   const onSendOtp = async () => {
     if (!digitsOnly(mobileLocal)) return Alert.alert('تنبيه', 'يرجى إدخال رقم الجوال');
 
-    if (deliveryMethod === 'telegram') {
-      setChecking(true);
-      const isLinked = await checkStatusOnce(fullMobile);
-      setChecking(false);
-
-      if (!isLinked) {
-        Alert.alert('تنبيه', 'الحساب غير مرتبط بتيليجرام. أكمل الربط أولاً.');
-        return;
-      }
-    }
-
     setSending(true);
     try {
-      await api.sendOtp(fullMobile, 'password_reset', deliveryMethod);
-      Alert.alert('تم', getOtpDeliverySuccessMessage(deliveryMethod, 'reset'));
+      await api.passwordResetRequest(fullMobile, 'whatsapp');
+      Alert.alert('تم', getOtpDeliverySuccessMessage('whatsapp', 'reset'));
       setStep('verify');
     } catch (e: any) {
       Alert.alert('خطأ', mapAuthError(e?.response?.data?.error || e?.message));
@@ -241,12 +98,6 @@ const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
     } finally {
       setVerifying(false);
     }
-  };
-
-  const onRefreshStatus = async () => {
-    setChecking(true);
-    await checkStatusOnce();
-    setChecking(false);
   };
 
   const renderCountryRow = ({ item }: { item: typeof ARAB_COUNTRIES[number] }) => (
@@ -286,9 +137,6 @@ const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
           <Text style={authStyles.title}>
             {step === 'request' ? 'اطلب رمز الاستعادة' : 'أدخل الرمز وكلمة المرور الجديدة'}
           </Text>
-          <Text style={authStyles.subtitle}>
-            استخدم رقم الجوال المسجل لديك ثم اختر الطريقة المناسبة لاستلام رمز التحقق.
-          </Text>
         </View>
 
         <View style={authStyles.card}>
@@ -326,28 +174,9 @@ const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
                 />
               </View>
 
-              <Text style={authStyles.sectionTitle}>طريقة استلام الرمز</Text>
-              <View style={{ gap: 8 }}>
-                {OTP_DELIVERY_OPTIONS.map(option => {
-                  const selected = deliveryMethod === option.key;
-                  return (
-                    <TouchableOpacity
-                      key={option.key}
-                      onPress={() => setDeliveryMethod(option.key)}
-                      style={[
-                        authStyles.optionCard,
-                        {
-                          backgroundColor: selected ? authColors.primarySoft : authColors.surface,
-                          borderColor: selected ? authColors.primary : authColors.cardBorder,
-                        },
-                      ]}
-                    >
-                      <Text style={authStyles.optionTitle}>{option.title}</Text>
-                      <Text style={authStyles.optionDescription}>{option.description}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              {/* <Text style={authStyles.sectionHint}>
+                استخدم رقم الجوال وسيصلك الرمز عبر واتساب.
+              </Text> */}
 
               <TouchableOpacity
                 onPress={onSendOtp}
@@ -357,57 +186,16 @@ const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
                 {sending ? (
                   <ActivityIndicator color={authColors.white} />
                 ) : (
-                  <Text style={authStyles.primaryButtonText}>
-                    {getOtpDeliveryActionLabel(deliveryMethod, 'reset')}
-                  </Text>
+                  <Text style={authStyles.primaryButtonText}>إرسال الرمز عبر واتساب</Text>
                 )}
               </TouchableOpacity>
-
-              {deliveryMethod === 'sms' ? (
-                <Text style={authStyles.centerText}>
-                  سيصلك رمز الاستعادة عبر رسالة نصية على الرقم المسجل.
-                </Text>
-              ) : checking ? (
-                <Text style={authStyles.centerText}>جاري التحقق من حالة تيليجرام...</Text>
-              ) : linked ? (
-                <Text style={authStyles.centerText}>
-                  هذا الرقم مرتبط بتيليجرام ويمكنك طلب الرمز الآن.
-                </Text>
-              ) : (
-                <Text style={authStyles.centerText}>
-                  لطلب الرمز عبر تيليجرام، أكمل ربط الحساب أولاً.
-                </Text>
-              )}
-
-              {deliveryMethod === 'telegram' && polling && (
-                <View style={{ alignItems: 'center', marginBottom: 4 }}>
-                  <ActivityIndicator />
-                  <Text style={[authStyles.centerText, { marginTop: 6 }]}>
-                    بانتظار ربط تيليجرام... ({pollSecondsLeft}s)
-                  </Text>
-                </View>
-              )}
-
-              {deliveryMethod === 'telegram' && !linked && (
-                <>
-                  <TouchableOpacity onPress={onLinkTelegram} style={authStyles.actionLink}>
-                    <Text style={authStyles.actionLinkText}>ربط تيليجرام</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity onPress={onRefreshStatus} style={authStyles.actionLink}>
-                    <Text style={authStyles.subtleLinkText}>تحديث الحالة</Text>
-                  </TouchableOpacity>
-                </>
-              )}
             </>
           )}
 
           {step === 'verify' && (
             <>
               <Text style={authStyles.centerText}>
-                {deliveryMethod === 'sms'
-                  ? 'أدخل رمز التحقق الذي وصلك عبر رسالة نصية.'
-                  : 'أدخل رمز التحقق الذي وصلك عبر تيليجرام.'}
+                أدخل رمز التحقق الذي وصلك عبر واتساب.
               </Text>
               <TextInput
                 placeholder="رمز التحقق - 6 أرقام"

@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import styled from 'styled-components/native';
 import { WebView } from 'react-native-webview';
+import AppLoading from './components/AppLoading';
 
 const API_URL = 'http://tanamitrain.com/tanamiAdmin/api/mobile-app/location';
 
@@ -137,7 +138,7 @@ export default function OurLocationScreen() {
       <LocationText>سوريا - اللاذقية - سوق التجار</LocationText>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#ffc546" style={{ marginTop: 16 }} />
+        <AppLoading style={{ backgroundColor: 'transparent' }} />
       ) : embedUrl && !failed ? (
         <WebView
           source={useIframeWrapper ? { html: iframeHtml! } : { uri: embedUrl }}

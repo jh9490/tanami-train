@@ -7,6 +7,7 @@
 **Fields**:
 
 - `editingLanguage`: Current visible editor language, `ar` or `en`
+- `contact`: ATS-friendly bilingual contact section with profile-derived defaults
 - `fullName`: Localized field pair for the user name, editable in both languages
 - `summary`: Localized field pair for the professional summary
 - `experiences[]`: Repeatable bilingual work-history entries
@@ -20,6 +21,24 @@
 - Arabic is the default `editingLanguage`.
 - The draft stays a single document even though each field carries Arabic and English values.
 - Export uses the latest saved values from the currently selected output language.
+- The draft may start from authenticated profile defaults before the user makes manual CV-specific edits.
+
+## CV Contact Section
+
+**Purpose**: Represent ATS-friendly contact data that can be rendered near the top of the CV and reused across both languages.
+
+**Fields**:
+
+- `email`: Preserved contact value populated from the authenticated profile when available
+- `phone`: Preserved contact value populated from the authenticated session mobile number when available
+- `address`: Localized field pair populated from `address_ar` and `address_en` profile values when available
+- `title`: Localized field pair populated from `title_ar` and `title_en` profile values when available
+
+**Rules**:
+
+- Profile-derived values are defaults, not locked values.
+- The contact section participates in local persistence and export output.
+- Email and phone remain protected values unless the user edits them directly.
 
 ## Localized Field Pair
 
@@ -139,3 +158,19 @@
 
 - A partial success is valid if unaffected fields are preserved and failed fields are surfaced clearly.
 - The sync result should be reusable by the screen to show status without re-deriving field changes from scratch.
+
+## Local Draft Snapshot
+
+**Purpose**: Persist the bilingual draft on the device so the authenticated user can continue later without re-entering saved content.
+
+**Fields**:
+
+- `profileId`: Authenticated profile identifier used to scope the draft locally when available
+- `draft`: The latest serialized bilingual CV draft
+- `savedAt`: Last local save timestamp
+- `source`: Whether the restored draft came from profile defaults, local persistence, or a merged result
+
+**Rules**:
+
+- Local storage is scoped to the authenticated user on the current device.
+- Restoring a local draft must not discard newer in-progress edits during the same session.

@@ -7,7 +7,10 @@ import com.facebook.react.uimanager.ViewManager
 
 class CVTranslationPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-    return listOf(CVTranslationModule(reactContext))
+    return listOf(
+      CVTranslationModule(reactContext),
+      CVFileSaveModule(reactContext),
+    )
   }
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {

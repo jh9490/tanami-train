@@ -1,14 +1,19 @@
 // src/screens/MenuScreen.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert, Platform, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/AppNavigator';
+import type { MenuStackParamList, RootStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
 import { Linking } from 'react-native';
 import { rtlStyles } from '../../theme/rtl';
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+type Nav = CompositeNavigationProp<
+  NativeStackNavigationProp<MenuStackParamList>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 const Row = ({
   title,
@@ -40,8 +45,9 @@ const Row = ({
 );
 
 export default function MenuScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
-  const { signOut, user, isAuthenticated , displayName } = useAuth();
+  const { signOut, isAuthenticated, displayName } = useAuth();
 
   const handleLogout = () => {
     Alert.alert('تأكيد', 'هل تريد تسجيل الخروج؟', [
@@ -100,72 +106,85 @@ export default function MenuScreen() {
 
   return (
     <View style={styles.container}>
-      {/* بطاقة بسيطة لبيانات المستخدم */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerMain}>
-          <Text style={styles.headerTitle}>
-            {isAuthenticated ? 'أهلًا بك' : 'مرحبًا'}
-          </Text>
-          <Text style={styles.headerSub}>
-            {isAuthenticated ? displayName: 'سجّل الدخول للوصول لكل الميزات'}
-          </Text>
-        </View>
-        <Icon
-          name="account-circle"
-          size={48}
-          color="#0f4f30"
-          style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
-        />
-      </View>
-
-      <View style={styles.card}>
-        <Row
-          title="التحقق من الشهادات"
-          icon="verified"
-          // @ts-expect-error: depends on your stack names
-          onPress={() => navigation.navigate('VerifyCertificate')}
-        />
-        <Row
-          title="اتصل بنا"
-          icon="support-agent"
-          // @ts-expect-error
-          onPress={() => navigation.navigate('ContactUs')}
-        />
-
-       <Row title="موقعنا" icon="place" onPress={openMap} />
-
-        {/* Divider */}
-        <View style={styles.divider} />
-
-        {/* ✅ Show only for authenticated users */}
-        {isAuthenticated && (
-          <Row
-            title="صـوري"
-            icon="photo-library"
-            onPress={() => navigation.navigate('MyPhotos' as never)}
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* بطاقة بسيطة لبيانات المستخدم */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerMain}>
+            <Text style={styles.headerTitle}>
+              {isAuthenticated ? 'أهلًا بك' : 'مرحبًا'}
+            </Text>
+            <Text style={styles.headerSub}>
+              {isAuthenticated ? displayName: 'سجّل الدخول للوصول لكل الميزات'}
+            </Text>
+          </View>
+          <Icon
+            name="account-circle"
+            size={48}
+            color="#0f4f30"
+            style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
           />
-        )}
+        </View>
 
-        {/* Divider */}
-        <View style={styles.divider} />
+        <View style={styles.card}>
+          <Row
+            title="التحقق من الشهادات"
+            icon="verified"
+            onPress={() => navigation.navigate('VerifyCertificate')}
+          />
+          <Row
+            title="اتصل بنا"
+            icon="support-agent"
+            onPress={() => navigation.navigate('ContactUs')}
+          />
+
+         <Row title="موقعنا" icon="place" onPress={openMap} />
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* ✅ Show only for authenticated users */}
+          {isAuthenticated && (
+            <>
+              <Row
+                title="الإعدادات"
+                icon="settings"
+                onPress={() => navigation.navigate('Settings')}
+              />
+              <Row
+                title="صـوري"
+                icon="photo-library"
+                onPress={() => navigation.navigate('MyPhotos')}
+              />
+            </>
+          )}
+
+          {/* Divider */}
+          <View style={styles.divider} />
  
 
-        {isAuthenticated ? (
-          <Row title="تسجيل الخروج" icon="logout" onPress={handleLogout} danger />
-        ) : (
-          <Row
-            title="تسجيل الدخول"
-            icon="login"
-            onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
-          />
-        )}
-      </View>
+          {isAuthenticated ? (
+            <Row title="تسجيل الخروج" icon="logout" onPress={handleLogout} danger />
+          ) : (
+            <Row
+              title="تسجيل الدخول"
+              icon="login"
+              onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
+            />
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff1e2', padding: 16, direction: 'rtl' },
+  container: { flex: 1, backgroundColor: '#fff1e2', direction: 'rtl' },
+  scrollContent: {
+    padding: 16,
+  },
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',

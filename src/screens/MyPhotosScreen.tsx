@@ -16,6 +16,7 @@ import styled from 'styled-components/native';
 import ImageViewer from 'react-native-image-zoom-viewer';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
+import AppLoading from './components/AppLoading';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -199,7 +200,7 @@ const MyPhotosScreen: React.FC = () => {
   if (loading && !refreshing) {
     return (
       <Container>
-        <ActivityIndicator size="large" color="#111" style={{ marginTop: 24 }} />
+        <AppLoading style={{ backgroundColor: 'transparent' }} />
       </Container>
     );
   }

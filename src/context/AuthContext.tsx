@@ -4,12 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import { api } from '../services/api';
-import { mapAuthError, OtpDeliveryMethod } from '../auth/otp';
+import { mapAuthError } from '../auth/otp';
 import { getOrCreateDeviceId } from '../util/deviceId';
+import type { Profile } from '../types/api';
 
 // ⬇️ NEW: import your storage helpers for profile id
 import {
-  getStoredProfileId,
   setStoredProfileId,
   clearStoredProfileId,
 } from '../storage/authStorage';
@@ -19,11 +19,6 @@ type User = {
   username: string; // mobile
   email: string;
   status: number;
-};
-
-type Profile = {
-  id?: number | null;
-  fullname_ar?: string | null;
 };
 
 type AuthContextType = {
@@ -38,7 +33,6 @@ type AuthContextType = {
     mobile: string,
     password: string,
     email?: string,
-    deliveryMethod?: OtpDeliveryMethod,
   ) => Promise<void>;
   verifyOtp: (mobile: string, code: string) => Promise<void>;
   signIn: (mobile: string, password: string) => Promise<void>;
@@ -144,10 +138,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     mobile: string,
     password: string,
     email?: string,
-    deliveryMethod: OtpDeliveryMethod = 'telegram',
   ) => {
     try {
-      await api.signup(mobile, password, email, deliveryMethod);
+      await api.signup(mobile, password, email);
       Alert.alert('تم', 'تم إنشاء الحساب بنجاح. أكمل التحقق لاستلام الرمز.');
     } catch (e: any) {
       Alert.alert('خطأ', mapAuthError(e.message));

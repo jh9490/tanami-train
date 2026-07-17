@@ -199,6 +199,7 @@ const SignInScreen: React.FC<any> = ({ navigation }) => {
         navigation.navigate('OtpVerify', {
           mobile: mobileFull,
           context: 'signin',
+          deliveryMethod: 'whatsapp',
         });
       }
     } finally {

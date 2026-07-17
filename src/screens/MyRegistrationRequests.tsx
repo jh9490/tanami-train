@@ -1,7 +1,6 @@
 // src/screens/MyRegistrationRequests.tsx
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   RefreshControl,
@@ -10,6 +9,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import AppLoading from './components/AppLoading';
 
 type ReqItem = {
   id: number;
@@ -134,11 +134,7 @@ export default function MyRegistrationRequests() {
   }
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#fff1e2', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
+    return <AppLoading />;
   }
 
   return (

@@ -13,6 +13,19 @@ type InitOpts = {
   onOpen?: (data: Record<string, string>) => void;
 };
 
+function stringifyNotificationData(
+  data?: Record<string, string | object>,
+): Record<string, string> {
+  if (!data) return {};
+
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? value : JSON.stringify(value),
+    ])
+  );
+}
+
 /** Ask notification permission (Android 13+ + iOS; no-op on older Android) */
 export async function requestPushPermission() {
   try { return await notifee.requestPermission(); }
@@ -39,13 +52,14 @@ async function ensureDefaultChannel(): Promise<string | undefined> {
 /** Nicely show a local notification (used for foreground messages) */
 async function displayLocalNotification(msg: FirebaseMessagingTypes.RemoteMessage) {
   const channelId = await ensureDefaultChannel();
-  const title = msg.notification?.title || msg.data?.title || 'Tanami Train';
-  const body = msg.notification?.body || msg.data?.body || 'لديك إشعار جديد';
+  const data = stringifyNotificationData(msg.data);
+  const title = msg.notification?.title || data.title || 'Tanami Train';
+  const body = msg.notification?.body || data.body || 'لديك إشعار جديد';
   await notifee.displayNotification({
     title,
     body,
     android: { channelId, smallIcon: 'ic_launcher', pressAction: { id: 'default' } },
-    data: msg.data,
+    data,
   });
 }
 
@@ -70,7 +84,7 @@ async function ackIfSignedIn(msg: FirebaseMessagingTypes.RemoteMessage) {
       fcm_message_id: msg.messageId || undefined,
       title: msg.notification?.title,
       body: msg.notification?.body,
-      data: (msg.data as Record<string, string>) || {},
+      data: stringifyNotificationData(msg.data),
       via,
       received_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     };
@@ -100,7 +114,7 @@ function listenForegroundMessages() {
 function attachOpenHandlers(onOpen?: (data: Record<string, string>) => void) {
   const unsubOpened = messaging().onNotificationOpenedApp(async (remoteMessage) => {
     await ackIfSignedIn(remoteMessage);
-    if (remoteMessage?.data && onOpen) onOpen(remoteMessage.data);
+    if (remoteMessage?.data && onOpen) onOpen(stringifyNotificationData(remoteMessage.data));
   });
 
   messaging()
@@ -108,7 +122,7 @@ function attachOpenHandlers(onOpen?: (data: Record<string, string>) => void) {
     .then(async (remoteMessage) => {
       if (remoteMessage) {
         await ackIfSignedIn(remoteMessage);
-        if (remoteMessage.data && onOpen) onOpen(remoteMessage.data);
+        if (remoteMessage.data && onOpen) onOpen(stringifyNotificationData(remoteMessage.data));
       }
     });
 

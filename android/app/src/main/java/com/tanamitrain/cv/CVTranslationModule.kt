@@ -55,6 +55,11 @@ class CVTranslationModule(private val reactContext: ReactApplicationContext) : R
       }
     }
 
+    if (values.isEmpty()) {
+      promise.resolve(Arguments.createArray())
+      return
+    }
+
     val translator = createTranslator(sourceCode, targetCode)
 
     translator.downloadModelIfNeeded(DownloadConditions.Builder().build())
@@ -80,7 +85,7 @@ class CVTranslationModule(private val reactContext: ReactApplicationContext) : R
           }
           .addOnFailureListener { error ->
             translator.close()
-            promise.reject("translation_failed", "Failed to translate CV text on-device.", error)
+            promise.reject("field_sync_failed", "Failed to sync CV text on-device.", error)
           }
       }
       .addOnFailureListener { error ->

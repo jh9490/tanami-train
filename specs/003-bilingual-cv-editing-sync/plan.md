@@ -5,26 +5,26 @@
 
 ## Summary
 
-Evolve the existing Arabic-first CV generator into a bilingual editor that auto-populates the currently selected language from the opposite-language draft, keeps translated values editable, and reuses the most recently edited version as the next sync source. Extend the current CV form, shared CV types, and translation service to support bidirectional field-level syncing plus the new certifications and courses and volunteer experience sections, while keeping the existing export flow and authenticated navigation intact.
+Evolve the existing Arabic-first CV generator into a bilingual editor that auto-populates the currently selected language from the opposite-language draft, keeps translated values editable, persists the bilingual draft locally on device, and preloads ATS contact and default name data from the same authenticated profile API already used by the account screen. Extend the current CV form, shared CV types, storage layer, and translation service to support bidirectional field-level syncing plus the ATS contact section, certifications and courses, and volunteer experience, while keeping the existing export flow and authenticated navigation intact.
 
 ## Technical Context
 
 **Language/Version**: TypeScript 5.x, React 19.1, React Native 0.80, Kotlin 2.1  
 **Primary Dependencies**: React Navigation 7, `@react-native-async-storage/async-storage`, `react-native-html-to-pdf`, `react-native-share`, `react-native-vector-icons`, Android ML Kit translation via the existing `CVTranslationModule` bridge  
-**Storage**: In-memory React state for the active bilingual draft, existing transient PDF files in device storage, no new backend translation storage in this increment  
-**Testing**: Jest for CV service and sync-state logic, plus mandatory manual Android validation for bidirectional translation sync, repeated-entry editing, and PDF export  
+**Storage**: Local device persistence for the bilingual CV draft via `@react-native-async-storage/async-storage`, in-memory React state for the active session copy, existing transient PDF files in device storage, no new backend translation storage in this increment  
+**Testing**: Jest for CV service, sync-state, and draft-persistence logic, plus mandatory manual Android validation for bidirectional translation sync, profile-prefill behavior, local draft restore, and PDF export  
 **Target Platform**: Existing TanamiTrain React Native app, with Android device or emulator validation required for automatic translation sync  
 **Project Type**: Mobile app  
 **Performance Goals**: Language switch auto-populates eligible fields within 3 seconds after the local translation model is ready; Arabic PDF generation behavior remains unchanged; edited bilingual content remains ready for export in the selected language without extra re-entry  
 **Constraints**: Authenticated access only, Arabic remains the default editing language, automatic translation stays on-device, user edits must not be silently overwritten, existing screen/service architecture should be reused, Android is the supported automatic-sync path for this increment, preserve dirty-worktree safety  
-**Scale/Scope**: Single-user bilingual CV drafting across full name, summary, experience, education, skills, certifications and courses, and volunteer experience inside the current CV flow
+**Scale/Scope**: Single-user bilingual CV drafting across ATS contact information, full name, summary, experience, education, skills, certifications and courses, and volunteer experience inside the current CV flow
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - **Spec before implementation**: PASS. This feature has a dedicated spec package under `specs/003-bilingual-cv-editing-sync/`.
-- **Existing architecture first**: PASS. The plan extends `src/screens/cv/CVFormScreen.tsx`, `src/services/`, and the existing Android translation bridge instead of introducing a separate editor or backend workflow.
+- **Existing architecture first**: PASS. The plan extends `src/screens/cv/CVFormScreen.tsx`, `src/services/`, `src/storage/`, and the existing Android translation bridge instead of introducing a separate editor or backend workflow.
 - **Authenticated, Arabic-first UX**: PASS. Arabic remains the default editing language and the authenticated navigation model from `src/context/AuthContext.tsx` and `src/navigation/AppNavigator.tsx` stays in place.
 - **Native reliability is a product requirement**: PASS. The plan keeps Android translation-module behavior and export validation as explicit deliverables with manual runtime checks.
 - **Small, reversible increments**: PASS. The work is decomposed into draft model changes, sync-service behavior, form-section expansion, and export compatibility so the feature can be built in narrow slices.
@@ -57,6 +57,9 @@ src/
 ├── screens/
 │   └── cv/
 │       └── CVFormScreen.tsx
+├── storage/
+│   ├── authStorage.ts
+│   └── cvDraftStorage.ts
 └── services/
     ├── cvHtmlRenderer.ts
     ├── cvService.ts
@@ -70,7 +73,7 @@ android/
     └── CVTranslationPackage.kt
 ```
 
-**Structure Decision**: Reuse the current CV form screen as the single bilingual editing surface, extend the shared CV types and service layer to carry localized values and sync metadata, and keep automatic translation inside the existing Android native bridge. PDF generation remains in the current service pipeline rather than moving to a separate subsystem.
+**Structure Decision**: Reuse the current CV form screen as the single bilingual editing surface, extend the shared CV types and service layer to carry localized values and sync metadata, add a focused local-storage helper under `src/storage/` for device persistence, and reuse the existing authenticated profile data already loaded for the account flow. Automatic translation stays inside the existing Android native bridge and PDF generation remains in the current service pipeline rather than moving to a separate subsystem.
 
 ## Complexity Tracking
 

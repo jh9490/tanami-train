@@ -32,3 +32,4 @@
 ## Notes
 
 - Validation completed in one pass. No outstanding clarification markers were needed for the initial draft.
+- Revalidated after adding the requirement that the authenticated CV flow must exclude demo or sample resume content.

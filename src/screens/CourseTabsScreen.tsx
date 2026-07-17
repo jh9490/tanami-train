@@ -1,11 +1,10 @@
 // screens/CourseTabsScreen.tsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   Image,
   ScrollView,
-  ActivityIndicator,
   TouchableOpacity,
   Alert,
   Linking,
@@ -13,12 +12,15 @@ import {
   Share,
 } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { WebView } from 'react-native-webview';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { getYouTubeEmbedUrl } from '../util/youtubeLive';
 import CertificatePreviewNami from './components/CertificatePreviewNami';
+import AppLoading from './components/AppLoading';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -251,7 +253,7 @@ function CertificateTab({ route }: any) {
   const arShotRef = useRef<View>(null);
   const enShotRef = useRef<View>(null);
 
-  const saveImage = async (ref: React.RefObject<View>) => {
+  const saveImage = async (ref: React.RefObject<View | null>) => {
     try {
       const uri = await captureRef(ref, { format: 'png', quality: 1, result: 'tmpfile' });
       await  CameraRoll.save(uri, { type: 'photo' });
@@ -261,7 +263,7 @@ function CertificateTab({ route }: any) {
     }
   };
 
-  const shareImage = async (ref: React.RefObject<View>) => {
+  const shareImage = async (ref: React.RefObject<View | null>) => {
     try {
       const uri = await captureRef(ref, { format: 'png', quality: 1, result: 'tmpfile' });
       await Share.share({ url: uri, message: 'Tanami Train Certificate' });
@@ -335,10 +337,88 @@ function CertificateTab({ route }: any) {
   );
 }
 
+function buildYouTubeHtml(embedUrl: string) {
+  return `
+<!doctype html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        height: 100%;
+        overflow: hidden;
+      }
+      iframe {
+        border: 0;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="${embedUrl}"
+      title="YouTube live preview"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen>
+    </iframe>
+  </body>
+</html>`;
+}
+
+function LivePreviewTab({ route }: any) {
+  const { liveUrl } = route.params as { liveUrl?: string | null };
+  const [failed, setFailed] = useState(false);
+  const embedUrl = getYouTubeEmbedUrl(liveUrl);
+
+  if (!embedUrl || failed) {
+    return (
+      <View style={styles.liveUnavailableWrap}>
+        <Text style={styles.h1}>البث المباشر</Text>
+        <Text style={styles.bodySmall}>
+          رابط البث المباشر غير متاح حالياً لهذه الدورة.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.liveScreen}
+      contentContainerStyle={styles.liveContent}
+    >
+      <Text style={styles.h1}>البث المباشر</Text>
+      <View style={styles.playerShell}>
+        <WebView
+          source={{ html: buildYouTubeHtml(embedUrl), baseUrl: 'https://tanamitrain.com' }}
+          style={styles.player}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsFullscreenVideo
+          mediaPlaybackRequiresUserAction={false}
+          setSupportMultipleWindows={false}
+          onError={() => setFailed(true)}
+          onHttpError={() => setFailed(true)}
+        />
+      </View>
+    </ScrollView>
+  );
+}
+
 /* ---------------- Parent: fetch once & pass down ---------------- */
 
 export default function CourseTabsScreen({ route }: any) {
-  const { courseId, activityId, studentId: studentIdParam, title: titleFromNav } = route.params ?? {};
+  const {
+    courseId,
+    activityId,
+    studentId: studentIdParam,
+    title: titleFromNav,
+    liveUrl,
+  } = route.params ?? {};
   const { token, user } = useAuth();
   const studentId = studentIdParam ?? user?.id;
 
@@ -394,11 +474,7 @@ export default function CourseTabsScreen({ route }: any) {
   }, [courseId, activityId, studentId, token, titleFromNav]);
 
   if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#0f4f30" />
-      </View>
-    );
+    return <AppLoading />;
   }
 
   if (err || !course) {
@@ -433,6 +509,13 @@ export default function CourseTabsScreen({ route }: any) {
         component={MediaTab}
         options={{ title: 'الوسائط' }}
         initialParams={{ images: media.images, docs: media.docs }}
+      />
+
+      <Tab.Screen
+        name="LivePreview"
+        component={LivePreviewTab}
+        options={{ title: 'البث المباشر' }}
+        initialParams={{ liveUrl }}
       />
 
       <Tab.Screen
@@ -485,6 +568,25 @@ const styles = StyleSheet.create({
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40 },
   emptyText: { fontFamily: 'NotoKufiArabic-Regular', color: '#666' },
+
+  liveScreen: { flex: 1, backgroundColor: '#fff1e2' },
+  liveContent: { padding: 12, paddingBottom: 32 },
+  playerShell: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#111',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  player: { flex: 1, backgroundColor: '#000' },
+  liveUnavailableWrap: {
+    flex: 1,
+    backgroundColor: '#fff1e2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
 
   primaryBtn: {
     backgroundColor: '#0f4f30',

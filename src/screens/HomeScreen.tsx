@@ -1,53 +1,93 @@
-// src/screens/HomeScreen.tsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Dimensions,
-  Linking,
-  View,
   I18nManager,
-  Text,
-  useWindowDimensions,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
   Image,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import styled from 'styled-components/native';
 import Carousel from 'react-native-reanimated-carousel';
-import Animated, { interpolate, Extrapolate } from 'react-native-reanimated';
+import { Extrapolate, interpolate } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/AppNavigator';
+import { openLinkSafe } from '../util/Linker';
 import PlaceholderPoster from './components/PlaceholderPoster';
-import CourseDialog, { CourseLite } from './components/CourseDialog'; // ✅ reusable dialog
+import CourseDialog, { CourseLite } from './components/CourseDialog';
+import AppLoading from './components/AppLoading';
 
 I18nManager.forceRTL(true);
 
-/* ===== layout constants ===== */
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PAGE_PADDING = 12;
-const VISIBLE_WIDTH = Math.round(SCREEN_WIDTH * 0.84);  // poster width (shows neighbors)
-const POSTER_RATIO = 3 / 4;                             // width : height (tall flyers)
-const POSTER_HEIGHT = Math.round(VISIBLE_WIDTH / POSTER_RATIO);
+const POSTER_RATIO = 3 / 4;
 const GRID_GAP = 10;
 
 const BASE = 'http://tanamitrain.com/tanamiAdmin';
 const SLIDERS_URL = `${BASE}/api/mobile-app/sliders`;
 const ACTIVITIES_URL = `${BASE}/api/mobile-app/activities`;
 
-/* ===== styled ===== */
+type SliderItem = { id: string; image: string; link?: string };
+type CourseBucketKey = 'current' | 'upcoming';
+type HomeExternalLink = {
+  id: string;
+  iconName: string;
+  label: string;
+  url: string;
+};
+type HomeGridItemProps = {
+  icon: string;
+  label: string;
+  onPress: () => void;
+};
+type CourseSection = {
+  key: CourseBucketKey;
+  title: string;
+  items: CourseLite[];
+};
+
+const HOME_EXTERNAL_LINKS: HomeExternalLink[] = [
+  {
+    id: 'facebook',
+    iconName: 'facebook',
+    label: 'فيسبوك',
+    url: 'https://www.facebook.com/tanami.train',
+  },
+  {
+    id: 'instagram',
+    iconName: 'instagram',
+    label: 'إنستغرام',
+    url: 'https://www.instagram.com/tanami.train',
+  },
+  {
+    id: 'whatsapp',
+    iconName: 'whatsapp',
+    label: 'واتساب',
+    url: 'https://whatsapp.com/channel/0029VaAySIQ84OmFIvyBNK1Y',
+  },
+  {
+    id: 'website',
+    iconName: 'globe',
+    label: 'الموقع الإلكتروني',
+    url: 'http://tanamitrain.com',
+  },
+];
+
 const Screen = styled.View`
   flex: 1;
   background-color: #fff1e2;
 `;
 
-/* slider */
 const SlideTouchable = styled.TouchableOpacity``;
 const SlideImage = styled.Image`
   width: ${SCREEN_WIDTH}px;
@@ -56,7 +96,6 @@ const SlideImage = styled.Image`
   margin: 16px 0;
 `;
 
-/* --- Auth section --- */
 const AuthCard = styled.View`
   margin: 6px ${PAGE_PADDING}px 16px;
   background: #eceadf;
@@ -110,17 +149,15 @@ const PrimaryBtn = styled.TouchableOpacity`
   min-width: 130px;
   align-items: center;
 `;
+
 const PrimaryText = styled.Text`
   color: #eceadf;
   font-size: 13px;
   font-family: 'NotoKufiArabic-Bold';
 `;
 
-const StickyWrap = styled.View`
-  background-color: #fff1e2;
-  padding: 6px ${PAGE_PADDING}px 0;
-  z-index: 2;
-  elevation: 0;
+const CoursesHeader = styled.View`
+  padding: 10px ${PAGE_PADDING}px 0;
 `;
 
 const SectionTitle = styled.Text`
@@ -131,36 +168,28 @@ const SectionTitle = styled.Text`
   text-align: center;
 `;
 
-/* Segmented */
-const Segmented = styled.View`
-  align-self: center;
-  background: #eee;
-  border-radius: 999px;
-  padding: 4px;
-  margin: 0;
-  flex-direction: row;
-`;
-const SegItem = styled.TouchableOpacity<{ active: boolean }>`
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: ${({ active }) => (active ? '#0f4f30' : 'transparent')};
-  margin: 0 2px;
-`;
-const SegText = styled.Text<{ active: boolean }>`
-  font-size: 12px;
-  font-family: 'NotoKufiArabic-Bold';
-  color: ${({ active }) => (active ? '#eceadf' : '#333')};
+const CourseSectionBlock = styled.View`
+  margin-top: 10px;
 `;
 
-/* posters – grid items */
-const GridWrap = styled.View`
-  padding: 6px ${PAGE_PADDING}px 0;
+const EmptyCoursesText = styled.Text`
+  text-align: center;
+  color: #333;
+  margin-top: 10px;
+  padding: 0 ${PAGE_PADDING}px;
+  font-family: 'NotoKufiArabic-Regular';
 `;
+
+const GridWrap = styled.View`
+  padding: 0 ${PAGE_PADDING}px;
+`;
+
 const GridRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
   margin-bottom: ${GRID_GAP}px;
 `;
+
 const Card = styled.TouchableOpacity<{ w: number; h: number }>`
   width: ${({ w }) => w}px;
   height: ${({ h }) => h}px;
@@ -169,31 +198,48 @@ const Card = styled.TouchableOpacity<{ w: number; h: number }>`
   background: #f6efe6;
   position: relative;
 `;
-const CardTitle = styled.Text`
-  flex: 1;
-  text-align: center;
-  text-align-vertical: center;
-  padding: 10px;
-  font-family: 'NotoKufiArabic-Bold';
-  color: #0f4f30;
+
+const CourseRibbon = styled.View<{ w: number }>`
+  position: absolute;
+  top: ${({ w }) => Math.max(8, Math.round(w * 0.06))}px;
+  left: ${({ w }) => Math.round((w - Math.max(72, Math.min(104, w * 0.54))) / 2)}px;
+  width: ${({ w }) => Math.max(72, Math.min(104, Math.round(w * 0.54)))}px;
+  height: ${({ w }) => Math.max(22, Math.min(28, Math.round(w * 0.16)))}px;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.82);
+  border-radius: 999px;
+  z-index: 2;
 `;
 
-/* social */
+const CourseRibbonText = styled.Text`
+  color: #0f4f30;
+  font-family: 'NotoKufiArabic-Bold';
+  font-size: 10px;
+  text-align: center;
+  writing-direction: rtl;
+`;
+
 const SocialSection = styled.View`
   margin-top: 24px;
   align-items: center;
   margin-bottom: 12px;
 `;
+
 const SocialTitle = styled.Text`
   font-size: 16px;
   font-family: 'NotoKufiArabic-Regular';
   color: #0f4f30;
   margin-bottom: 12px;
 `;
+
 const IconRow = styled.View`
   flex-direction: row;
   justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
 `;
+
 const SocialIcon = styled.TouchableOpacity`
   width: 48px;
   height: 48px;
@@ -201,106 +247,110 @@ const SocialIcon = styled.TouchableOpacity`
   background-color: #0f4f30;
   justify-content: center;
   align-items: center;
-  margin: 0 8px;
+  margin: 6px 8px;
 `;
 
-const Section = styled.View`
-  padding: 0 ${PAGE_PADDING}px;
-  margin-top: -8px;
-`;
-
-/* ===== utils ===== */
 const toAbs = (rel?: string | null) => (rel ? `${BASE}${rel}` : undefined);
+
+const HomeGridItem = ({ icon, label, onPress }: HomeGridItemProps) => (
+  <GridItemWrap onPress={onPress} activeOpacity={0.8}>
+    <MaterialIcon name={icon} size={28} color="#0f4f30" />
+    <GridItemLabel>{label}</GridItemLabel>
+  </GridItemWrap>
+);
+
 const isCurrentByDate = (start: string, end?: string, live?: boolean) => {
   try {
     const today = new Date();
-    const s = new Date(start + 'T00:00:00');
-    const e = end ? new Date(end + 'T23:59:59') : undefined;
+    const startDate = new Date(`${start}T00:00:00`);
+    const endDate = end ? new Date(`${end}T23:59:59`) : undefined;
+
     if (live) return true;
-    if (e) return s <= today && today <= e;
-    return s <= today;
+    if (endDate) return startDate <= today && today <= endDate;
+    return startDate <= today;
   } catch {
     return !!live;
   }
 };
 
 export default function HomeScreen() {
-  const [activeTab, setActiveTab] = useState<'current' | 'upcoming'>('current');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [sliderItems, setSliderItems] = useState<Array<{ id: string; image: string; link?: string }>>([]);
+  const [sliderItems, setSliderItems] = useState<SliderItem[]>([]);
   const [courses, setCourses] = useState<{ current: CourseLite[]; upcoming: CourseLite[] }>({
     current: [],
     upcoming: [],
   });
-
-  // ✅ NEW: use shared dialog
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseLite | null>(null);
 
   const { width: windowWidth } = useWindowDimensions();
-
-  // Navigation + Auth
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isAuthenticated, displayName, token } = useAuth(); // ← token
+  const { isAuthenticated, displayName, token } = useAuth();
 
-  type SliderItem = { id: string; image: string; link?: string };
-  const openLinkSafe = useCallback(async (url: string) => {
-    try {
-      const ok = await Linking.canOpenURL(url);
-      if (ok) await Linking.openURL(url);
-      else Alert.alert('تعذّر فتح الرابط', url);
-    } catch {
-      Alert.alert('حدث خطأ أثناء فتح الرابط');
-    }
-  }, []);
+  const courseSections = useMemo<CourseSection[]>(
+    () =>
+      [
+        { key: 'current' as const, title: 'حاليا', items: courses.current },
+        { key: 'upcoming' as const, title: 'قادمة', items: courses.upcoming },
+      ].filter(section => section.items.length > 0),
+    [courses],
+  );
+
+  const columns = 2;
+  const totalGaps = (columns - 1) * GRID_GAP;
+  const cardW = Math.floor((windowWidth - PAGE_PADDING * 2 - totalGaps) / columns);
+  const cardH = Math.round(cardW / POSTER_RATIO);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, aRes] = await Promise.all([fetch(SLIDERS_URL), fetch(ACTIVITIES_URL)]);
-      const sJson = await sRes.json();
-      const aJson = await aRes.json();
+      const [slidersResponse, activitiesResponse] = await Promise.all([fetch(SLIDERS_URL), fetch(ACTIVITIES_URL)]);
+      const slidersJson = await slidersResponse.json();
+      const activitiesJson = await activitiesResponse.json();
 
-      const mappedSliders = sJson
-        .map((s: any) => {
-          const img = toAbs(s.image0?.p50 || s.image0?.url);
-          if (!img) return null;
-          return { id: String(s.id), image: img, link: s.link ?? undefined };
+      const mappedSliders = slidersJson
+        .map((slider: any) => {
+          const image = toAbs(slider.image0?.p50 || slider.image0?.url);
+          if (!image) return null;
+          return { id: String(slider.id), image, link: slider.link ?? undefined };
         })
-        .filter(Boolean) as Array<{ id: string; image: string; link?: string }>;
+        .filter(Boolean) as SliderItem[];
 
-      const current: CourseLite[] = [];
-      const upcoming: CourseLite[] = [];
+      const nextCourses: { current: CourseLite[]; upcoming: CourseLite[] } = {
+        current: [],
+        upcoming: [],
+      };
 
-      aJson.forEach((a: any) => {
-        const bucket =
-          a.status_simple === 'current'
+      activitiesJson.forEach((activity: any) => {
+        const bucket: CourseBucketKey =
+          activity.status_simple === 'current'
             ? 'current'
-            : a.status_simple === 'upcoming'
+            : activity.status_simple === 'upcoming'
               ? 'upcoming'
-              : isCurrentByDate(a.date, a.end_date, a.live)
+              : isCurrentByDate(activity.date, activity.end_date, activity.live)
                 ? 'current'
                 : 'upcoming';
 
         const item: CourseLite = {
-          id: String(a.id),
-          title: (a.course_name || '').toString().trim() || '—',
-          image: a.image_url ?? null,
-          headLines: a.course?.course_head_lines || '',
-          nameAr: a.course?.name_ar ?? null,
-          days: a.course?.days ?? null,
-          hours: a.course?.hours ?? null,
-          date: a.date ?? null,
-          endDate: a.end_date ?? null,
-          live: !!a.live,
-          cost: a.course?.cost ?? null,
+          id: String(activity.id),
+          title: (activity.course_name || '').toString().trim() || '—',
+          image: activity.image_url ?? null,
+          headLines: activity.course?.course_head_lines || '',
+          nameAr: activity.course?.name_ar ?? null,
+          days: activity.course?.days ?? null,
+          hours: activity.course?.hours ?? null,
+          date: activity.date ?? null,
+          endDate: activity.end_date ?? null,
+          live: !!activity.live,
+          cost: activity.course?.cost ?? null,
         };
-        (bucket === 'current' ? current : upcoming).push(item);
+
+        nextCourses[bucket].push(item);
       });
 
       setSliderItems(mappedSliders);
-      setCourses({ current, upcoming });
+      setCourses(nextCourses);
     } catch {
       Alert.alert('خطأ في تحميل البيانات', 'تأكد من الاتصال وحاول مجددًا.');
     } finally {
@@ -318,186 +368,17 @@ export default function HomeScreen() {
     fetchAll();
   }, [fetchAll]);
 
-  const GridItem = ({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) => (
-    <GridItemWrap onPress={onPress} activeOpacity={0.8}>
-      <MaterialIcon name={icon} size={28} color="#0f4f30" />
-      <GridItemLabel>{label}</GridItemLabel>
-    </GridItemWrap>
-  );
-
-  /* ---- Auth Section ---- */
-  const AuthSection = useCallback(() => {
-    if (isAuthenticated) {
-      return (
-        <AuthCard>
-          <AuthTitle>أهلًا، {displayName ?? 'مستخدم'}</AuthTitle>
-          <AuthSubtitle>يمكنك الوصول إلى حسابك وإدارة بياناتك</AuthSubtitle>
-
-          {/* 2x2 grid */}
-          <View style={{ flexDirection: 'row', marginTop: 12 }}>
-            <GridItem
-              icon="manage-accounts"
-              label="حسابي"
-              onPress={() => navigation.navigate('AccountStack', { screen: 'Account' })}
-            />
-            <GridItem
-              icon="settings"
-              label="الإعدادات"
-              onPress={() => navigation.navigate('AccountStack', { screen: 'Settings' })}
-            />
-          </View>
-          <View style={{ flexDirection: 'row' }}>
-            <GridItem
-              icon="notifications"
-              label="إشعاراتي"
-              onPress={() => navigation.navigate('UserStack', { screen: 'MyNotifications' })}
-            />
-            <GridItem
-              icon="collections-bookmark"
-              label="دوراتي"
-              onPress={() => navigation.navigate('UserStack', { screen: 'MyCourses' })}
-            />
-          </View>
-          <View style={{ flexDirection: 'row' }}>
-            <GridItem
-              icon="how-to-reg"
-              label="طلبات التسجيل"
-              onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
-            />
-            <GridItem
-              icon="verified"
-              label="تحقق من شهادة"
-              onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
-            />
-          </View>
-        </AuthCard>
-      );
+  const renderCourseGrid = (section: CourseSection) => {
+    const rows: CourseLite[][] = [];
+    for (let index = 0; index < section.items.length; index += columns) {
+      rows.push(section.items.slice(index, index + columns));
     }
 
     return (
-      <AuthCard>
-      <AuthTitle>ابدأ الرحلة مع تنامي ترين</AuthTitle>
-      <AuthSubtitle>أنشئ حسابًا للوصول إلى جميع المميزات</AuthSubtitle>
-    
-      {/* ✅ Sign Up as primary CTA */}
-      <PrimaryBtn
-        style={{ alignSelf: 'center', marginTop: 16 }}
-        onPress={() => navigation.navigate('AuthStack', { screen: 'SignUp' })}
-      >
-        <PrimaryText>إنشاء حساب</PrimaryText>
-      </PrimaryBtn>
-    
-      {/* ✅ Sign In as a lightweight link */}
-      <Text
-        style={{
-          marginTop: 12,
-          fontSize: 13,
-          color: '#0f4f30',
-          fontFamily: 'NotoKufiArabic-Bold',
-          textAlign: 'center',
-          textDecorationLine: 'underline',
-        }}
-        onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
-      >
-        لديك حساب بالفعل؟ سجّل الدخول من هنا
-      </Text>
-    </AuthCard>
-    );
-  }, [isAuthenticated, displayName, navigation]);
-
-  /* ---- Header (slider + AuthSection) ---- */
-  const HeaderBlock = useCallback(
-    () => (
-      <View>
-        {sliderItems.length > 0 ? (
-          <Carousel<SliderItem>
-            width={SCREEN_WIDTH}
-            height={200}
-            loop
-            autoPlay
-            autoPlayInterval={6000}
-            scrollAnimationDuration={1200}
-            windowSize={5}
-            mode="parallax"
-            /** value is a number (offset from center) */
-            customAnimation={(value: number) => {
-              'worklet';
-              const a = Math.abs(value); // 0 = focused, 1 = one page away
-              const opacity = interpolate(a, [0, 0.5, 1], [1, 0.6, 0], Extrapolate.CLAMP);
-              const scale = interpolate(a, [0, 1], [1, 0.98], Extrapolate.CLAMP);
-              return { opacity, transform: [{ scale }] };
-            }}
-            onConfigurePanGesture={(g) => {
-              'worklet';
-              g.activeOffsetX([-20, 20]);
-              g.failOffsetY([-10, 10]);
-            }}
-            renderItem={({ item }: { item: SliderItem }) => (
-              <SlideTouchable
-                activeOpacity={0.9}
-                onPress={() => item.link && openLinkSafe(item.link)}
-                style={{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#e9e7e0' }}
-              >
-                <SlideImage
-                  source={{ uri: item.image }}
-                  resizeMode="cover"
-                  style={{ width: '100%', height: '100%' }}
-                />
-              </SlideTouchable>
-            )}
-            data={sliderItems}
-            keyExtractor={(it) => it.id}
-          />
-        ) : loading ? (
-          <ActivityIndicator size="large" style={{ marginVertical: 24 }} />
-        ) : null}
-  
-        <AuthSection />
-      </View>
-    ),
-    [sliderItems, loading, openLinkSafe, AuthSection]
-  );
-
-  /* ---- Sticky Segmented (title + pill) ---- */
-  const SegHeader = () => (
-    <StickyWrap>
-      <SectionTitle>يحدث في تنامي</SectionTitle>
-      <Segmented>
-        <SegItem active={activeTab === 'current'} onPress={() => setActiveTab('current')}>
-          <SegText active={activeTab === 'current'}>الحالية ({courses.current.length})</SegText>
-        </SegItem>
-        <SegItem active={activeTab === 'upcoming'} onPress={() => setActiveTab('upcoming')}>
-          <SegText active={activeTab === 'upcoming'}>القادمة ({courses.upcoming.length})</SegText>
-        </SegItem>
-      </Segmented>
-    </StickyWrap>
-  );
-
-  /* ---- GRID of posters ---- */
-  const CoursesGrid = () => {
-    const data = courses[activeTab];
-    const columns = windowWidth >= 420 ? 2 : 2;
-    const totalGaps = (columns - 1) * GRID_GAP;
-    const cardW = Math.floor((windowWidth - PAGE_PADDING * 2 - totalGaps) / columns);
-    const cardH = Math.round(cardW / POSTER_RATIO);
-
-    if (loading) return <ActivityIndicator size="large" style={{ marginVertical: 12 }} />;
-    if (!data.length)
-      return (
-        <Text style={{ textAlign: 'center', color: '#333', marginTop: 8, fontFamily: 'NotoKufiArabic-Regular' }}>
-          لا توجد عناصر لعرضها حاليًا
-        </Text>
-      );
-
-    // chunk to rows
-    const rows: CourseLite[][] = [];
-    for (let i = 0; i < data.length; i += columns) rows.push(data.slice(i, i + columns));
-
-    return (
       <GridWrap>
-        {rows.map((row, idx) => (
-          <GridRow key={`r-${idx}`}>
-            {row.map((item) => (
+        {rows.map((row, rowIndex) => (
+          <GridRow key={`row-${rowIndex}`}>
+            {row.map(item => (
               <Card
                 key={item.id}
                 w={cardW}
@@ -509,16 +390,15 @@ export default function HomeScreen() {
                 }}
               >
                 {item.image ? (
-                  <Image
-                    source={{ uri: item.image }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
-                  />
+                  <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                 ) : (
                   <PlaceholderPoster width={cardW} height={cardH} />
                 )}
 
-                {/* title overlay */}
+                <CourseRibbon pointerEvents="none" w={cardW}>
+                  <CourseRibbonText numberOfLines={1}>{section.title}</CourseRibbonText>
+                </CourseRibbon>
+
                 <View
                   pointerEvents="none"
                   style={{
@@ -547,106 +427,189 @@ export default function HomeScreen() {
                 </View>
               </Card>
             ))}
-            {row.length === 1 && columns === 2 ? <View style={{ width: cardW }} /> : null}
+
+            {row.length === 1 ? <View style={{ width: cardW }} /> : null}
           </GridRow>
         ))}
       </GridWrap>
     );
   };
 
-  /* ---- Social above END carousel ---- */
-  const FooterSocial = useCallback(
-    () => (
-      <SocialSection>
-        <SocialTitle>تابعنا على مواقع التواصل</SocialTitle>
-        <IconRow>
-          <SocialIcon onPress={() => openLinkSafe('https://www.facebook.com/tanami.train')}>
-            <Icon name="facebook" size={24} color="#eceadf" />
-          </SocialIcon>
-          <SocialIcon onPress={() => openLinkSafe('https://www.instagram.com/tanami.train')}>
-            <Icon name="instagram" size={24} color="#eceadf" />
-          </SocialIcon>
-          <SocialIcon onPress={() => openLinkSafe('https://whatsapp.com/channel/0029VaAySIQ84OmFIvyBNK1Y')}>
-            <Icon name="whatsapp" size={24} color="#eceadf" />
-          </SocialIcon>
-        </IconRow>
-      </SocialSection>
-    ),
-    [openLinkSafe]
-  );
+  const renderAuthSection = () => {
+    if (isAuthenticated) {
+      return (
+        <AuthCard>
+          <AuthTitle>أهلًا، {displayName ?? 'مستخدم'}</AuthTitle>
+          <AuthSubtitle>يمكنك الوصول إلى حسابك وإدارة بياناتك</AuthSubtitle>
 
-  /* ---- Posters carousel at the END ---- */
-  const EndPostersCarousel = () => {
-    const data = courses[activeTab];
-    if (!data.length) return null;
+          <View style={{ flexDirection: 'row', marginTop: 12 }}>
+            <HomeGridItem
+              icon="manage-accounts"
+              label="حسابي"
+              onPress={() => navigation.navigate('AccountStack', { screen: 'Account' })}
+            />
+            <HomeGridItem
+              icon="description"
+              label="سيرتي"
+              onPress={() => navigation.navigate('CVGenerator')}
+            />
+          </View>
+          <View style={{ flexDirection: 'row' }}>
+            <HomeGridItem
+              icon="notifications"
+              label="إشعاراتي"
+              onPress={() => navigation.navigate('UserStack', { screen: 'MyNotifications' })}
+            />
+            <HomeGridItem
+              icon="collections-bookmark"
+              label="دوراتي"
+              onPress={() => navigation.navigate('UserStack', { screen: 'MyCourses' })}
+            />
+          </View>
+          <View style={{ flexDirection: 'row' }}>
+            <HomeGridItem
+              icon="how-to-reg"
+              label="طلبات التسجيل"
+              onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+            />
+            <HomeGridItem
+              icon="verified"
+              label="تحقق من شهادة"
+              onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
+            />
+          </View>
+        </AuthCard>
+      );
+    }
 
     return (
-      <Section>
-        <Carousel
-          style={{ alignSelf: 'center', marginTop: 6 }}
-          width={VISIBLE_WIDTH}
-          height={POSTER_HEIGHT}
-          data={data}
-          loop={false}
-          snapEnabled
-          mode="parallax"
-          modeConfig={{
-            parallaxScrollingScale: 0.92,
-            parallaxAdjacentItemScale: 0.84,
-            parallaxScrollingOffset: 52,
+      <AuthCard>
+        <AuthTitle>ابدأ الرحلة مع تنامي ترين</AuthTitle>
+        <AuthSubtitle>أنشئ حسابًا للوصول إلى جميع المميزات</AuthSubtitle>
+
+        <PrimaryBtn
+          style={{ alignSelf: 'center', marginTop: 16 }}
+          onPress={() => navigation.navigate('AuthStack', { screen: 'SignUp' })}
+        >
+          <PrimaryText>إنشاء حساب</PrimaryText>
+        </PrimaryBtn>
+
+        <Text
+          style={{
+            marginTop: 12,
+            fontSize: 13,
+            color: '#0f4f30',
+            fontFamily: 'NotoKufiArabic-Bold',
+            textAlign: 'center',
+            textDecorationLine: 'underline',
           }}
-          onConfigurePanGesture={(g) => {
-            'worklet';
-            g.activeOffsetX([-20, 20]);
-            g.failOffsetY([-10, 10]);
-          }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => {
-                setSelectedCourse(item);
-                setDetailsOpen(true);
-              }}
-              style={{
-                width: VISIBLE_WIDTH,
-                height: POSTER_HEIGHT,
-                borderRadius: 16,
-                overflow: 'hidden',
-                backgroundColor: 'transparent',
-              }}
-            >
-              {item.image ? (
-                <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-              ) : (
-                <View style={{ flex: 1, backgroundColor: '#eceadf', justifyContent: 'center' }}>
-                  <CardTitle>{item.nameAr || item.title || '—'}</CardTitle>
-                </View>
-              )}
-            </TouchableOpacity>
-          )}
-        />
-      </Section>
+          onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
+        >
+          لديك حساب بالفعل؟ سجّل الدخول من هنا
+        </Text>
+      </AuthCard>
     );
   };
+
+  const renderHeaderBlock = () => (
+    <View>
+      {sliderItems.length > 0 ? (
+        <Carousel<SliderItem>
+          width={SCREEN_WIDTH}
+          height={200}
+          loop
+          autoPlay
+          autoPlayInterval={6000}
+          scrollAnimationDuration={1200}
+          windowSize={5}
+          mode="parallax"
+          customAnimation={(value: number) => {
+            'worklet';
+            const distance = Math.abs(value);
+            const opacity = interpolate(distance, [0, 0.5, 1], [1, 0.6, 0], Extrapolate.CLAMP);
+            const scale = interpolate(distance, [0, 1], [1, 0.98], Extrapolate.CLAMP);
+            return { opacity, transform: [{ scale }] };
+          }}
+          onConfigurePanGesture={gesture => {
+            'worklet';
+            gesture.activeOffsetX([-20, 20]);
+            gesture.failOffsetY([-10, 10]);
+          }}
+          renderItem={({ item }) => (
+            <SlideTouchable
+              activeOpacity={0.9}
+              onPress={() => {
+                if (item.link) {
+                  openLinkSafe(item.link);
+                }
+              }}
+              style={{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#e9e7e0' }}
+            >
+              <SlideImage source={{ uri: item.image }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+            </SlideTouchable>
+          )}
+          data={sliderItems}
+        />
+      ) : null}
+
+      {renderAuthSection()}
+    </View>
+  );
+
+  const renderCourseSections = () => {
+    if (loading) {
+      return null;
+    }
+
+    if (!courseSections.length) {
+      return <EmptyCoursesText>لا توجد دورات حالية أو قادمة لعرضها حاليًا</EmptyCoursesText>;
+    }
+
+    return courseSections.map(section => (
+      <CourseSectionBlock key={section.key}>
+        {renderCourseGrid(section)}
+      </CourseSectionBlock>
+    ));
+  };
+
+  const renderFooterSocial = () => (
+    <SocialSection>
+      <SocialTitle>تابعنا على مواقع التواصل</SocialTitle>
+      <IconRow>
+        {HOME_EXTERNAL_LINKS.map(link => (
+          <SocialIcon
+            key={link.id}
+            activeOpacity={0.85}
+            accessibilityRole="link"
+            accessibilityLabel={link.label}
+            onPress={() => openLinkSafe(link.url)}
+          >
+            <Icon name={link.iconName} size={24} color="#eceadf" />
+          </SocialIcon>
+        ))}
+      </IconRow>
+    </SocialSection>
+  );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Screen>
         <ScrollView
-          stickyHeaderIndices={[1]}
-          refreshControl={<RefreshControl enabled={false} refreshing={false} onRefresh={() => { }} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={{ paddingBottom: 32 }}
         >
-          <HeaderBlock />
-          <SegHeader />
-          <CoursesGrid />
+          {renderHeaderBlock()}
 
-          {/* Social icons ABOVE the end carousel */}
-          <FooterSocial />
+          <CoursesHeader>
+            <SectionTitle>يحدث في تنامي</SectionTitle>
+          </CoursesHeader>
+          {renderCourseSections()}
+          {renderFooterSocial()}
         </ScrollView>
+
+        {loading ? <AppLoading overlay /> : null}
       </Screen>
 
-      {/* ✅ Shared dialog used here */}
       <CourseDialog
         visible={detailsOpen}
         course={selectedCourse}

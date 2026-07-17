@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Linking,
   Alert,
   Modal,
   FlatList,
@@ -15,18 +14,12 @@ import {
   ScrollView,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
-import {
-  mapAuthError,
-  OtpDeliveryMethod,
-  OTP_DELIVERY_OPTIONS,
-} from '../../auth/otp';
+import { mapAuthError } from '../../auth/otp';
 import { authColors, authStyles } from '../../auth/ui';
 import { api } from '../../services/api';
 import { buildE164, digitsOnly, stripLeadingZero } from '../../util/phone';
 import FlagIcon from '../../util/FlagIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const BOT_USERNAME = 'TanamiTrain_bot';
 
 const ARAB_COUNTRIES = [
   { nameAr: 'السعودية', iso: 'SA', dial: '966' },
@@ -63,7 +56,6 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [deliveryMethod, setDeliveryMethod] = useState<OtpDeliveryMethod>('telegram');
 
   const fullMobile = useMemo(
     () => buildE164(country.dial, mobileLocal),
@@ -77,35 +69,13 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
 
     setBusy(true);
     try {
-      await signUp(fullMobile, password, email.trim() || undefined, deliveryMethod);
-
-      if (deliveryMethod === 'sms') {
-        try {
-          await api.sendOtp(fullMobile, 'initial', 'sms');
-        } catch (sendError: any) {
-          Alert.alert('خطأ', mapAuthError(sendError?.message));
-        }
-      }
-
-      if (deliveryMethod === 'telegram') {
-        try {
-          const st = await api.telegramStatus(fullMobile);
-          if (!st.linked) {
-            const { payload } = await api.telegramCreateLink(fullMobile);
-            const url = `https://t.me/${BOT_USERNAME}?start=${encodeURIComponent(payload)}`;
-            await Linking.openURL(url);
-            Alert.alert('معلومة', 'افتح تيليجرام واضغط على بدء لإكمال ربط الحساب ثم عد إلى شاشة التحقق.');
-          }
-        } catch (e: any) {
-          Alert.alert('خطأ', mapAuthError(e?.response?.data?.error || e?.message));
-          return;
-        }
-      }
+      await signUp(fullMobile, password, email.trim() || undefined);
+      await api.sendOtp(fullMobile, 'initial');
 
       navigation.navigate('OtpVerify', {
         mobile: fullMobile,
         context: 'signup',
-        deliveryMethod,
+        deliveryMethod: 'whatsapp',
       });
     } catch (e: any) {
       Alert.alert('خطأ', mapAuthError(e?.message));
@@ -209,31 +179,9 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
             style={authStyles.field}
           />
 
-          <Text style={authStyles.sectionTitle}>طريقة استلام الرمز</Text>
-          <Text style={authStyles.sectionHint}>
-            اختر الطريقة المناسبة لك لإرسال رمز التحقق عند إنشاء الحساب.
-          </Text>
-          <View style={{ gap: 8 }}>
-            {OTP_DELIVERY_OPTIONS.map(option => {
-              const selected = deliveryMethod === option.key;
-              return (
-                <TouchableOpacity
-                  key={option.key}
-                  onPress={() => setDeliveryMethod(option.key)}
-                  style={[
-                    authStyles.optionCard,
-                    {
-                      backgroundColor: selected ? authColors.primarySoft : authColors.surface,
-                      borderColor: selected ? authColors.primary : authColors.cardBorder,
-                    },
-                  ]}
-                >
-                  <Text style={authStyles.optionTitle}>{option.title}</Text>
-                  <Text style={authStyles.optionDescription}>{option.description}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {/* <Text style={authStyles.sectionHint}>
+            استخدم رقم الجوال وسيصلك الرمز عبر واتساب.
+          </Text> */}
 
           <TouchableOpacity
             onPress={onSubmit}
@@ -243,7 +191,7 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
             {busy ? (
               <ActivityIndicator color={authColors.white} />
             ) : (
-              <Text style={authStyles.primaryButtonText}>إنشاء الحساب</Text>
+              <Text style={authStyles.primaryButtonText}>إرسال الرمز عبر واتساب</Text>
             )}
           </TouchableOpacity>
         </View>

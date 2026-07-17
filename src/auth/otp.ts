@@ -1,8 +1,6 @@
-export type OtpDeliveryMethod = 'telegram' | 'sms';
+export type OtpDeliveryMethod = 'telegram' | 'sms' | 'whatsapp';
 
 export type OtpFlowContext = 'signup' | 'signin' | 'reset';
-
-export const OTP_PROXY_TOPIC = 'otp_proxy';
 
 export const OTP_DELIVERY_OPTIONS: Array<{
   key: OtpDeliveryMethod;
@@ -10,48 +8,37 @@ export const OTP_DELIVERY_OPTIONS: Array<{
   description: string;
 }> = [
   {
-    key: 'telegram',
-    title: 'تيليجرام',
-    description: 'استلام رمز التحقق عبر تيليجرام.',
-  },
-  {
-    key: 'sms',
-    title: 'رسالة نصية',
-    description: 'استلام رمز التحقق عبر رسالة نصية.',
+    key: 'whatsapp',
+    title: 'واتساب',
+    description: 'استلام رمز التحقق عبر واتساب.',
   },
 ];
 
-export function getOtpDeliveryTitle(method: OtpDeliveryMethod) {
-  return method === 'sms' ? 'رسالة نصية' : 'تيليجرام';
+export function getOtpDeliveryTitle(_method: OtpDeliveryMethod) {
+  return 'واتساب';
 }
 
-export function getOtpDeliveryActionLabel(method: OtpDeliveryMethod, context: OtpFlowContext) {
+export function getOtpDeliveryActionLabel(_method: OtpDeliveryMethod, context: OtpFlowContext) {
   if (context === 'reset') {
-    return method === 'sms' ? 'إرسال الرمز عبر رسالة نصية' : 'إرسال الرمز عبر تيليجرام';
+    return 'إرسال الرمز عبر واتساب';
   }
 
-  return method === 'sms' ? 'إرسال رمز التحقق عبر رسالة نصية' : 'إرسال رمز التحقق عبر تيليجرام';
+  return 'إرسال رمز التحقق عبر واتساب';
 }
 
 export function getOtpDeliverySuccessMessage(
-  method: OtpDeliveryMethod,
+  _method: OtpDeliveryMethod,
   context: OtpFlowContext,
 ) {
   if (context === 'reset') {
-    return method === 'sms'
-      ? 'تم إرسال رمز استعادة كلمة المرور عبر رسالة نصية.'
-      : 'تم إرسال رمز استعادة كلمة المرور عبر تيليجرام.';
+    return 'تم إرسال رمز استعادة كلمة المرور عبر واتساب.';
   }
 
-  return method === 'sms'
-    ? 'تم إرسال رمز التحقق عبر رسالة نصية.'
-    : 'تم إرسال رمز التحقق عبر تيليجرام.';
+  return 'تم إرسال رمز التحقق عبر واتساب.';
 }
 
-export function getOtpDeliveryHint(method: OtpDeliveryMethod, maskedMobile: string) {
-  return method === 'sms'
-    ? `سيصل رمز التحقق إلى الرقم ${maskedMobile} عبر رسالة نصية.`
-    : `سيصل رمز التحقق إلى حساب تيليجرام المرتبط بالرقم ${maskedMobile}.`;
+export function getOtpDeliveryHint(_method: OtpDeliveryMethod, maskedMobile: string) {
+  return `سيصل رمز التحقق إلى الرقم ${maskedMobile} عبر واتساب.`;
 }
 
 export function mapAuthError(code?: string) {
@@ -70,19 +57,30 @@ export function mapAuthError(code?: string) {
       return 'رمز التحقق غير صحيح.';
     case 'otp_expired':
       return 'انتهت صلاحية الرمز. اطلب رمزًا جديدًا.';
-    case 'rate_limited':
-      return 'يرجى الانتظار قليلًا قبل إعادة الإرسال.';
     case 'fullname_required':
       return 'الاسم الكامل مطلوب.';
+    case 'invalid_phone_format':
+      return 'صيغة رقم الجوال غير صحيحة. استخدم رقمًا بصيغة دولية مثل +971501234567.';
+    case 'user_not_found':
+      return 'لم يتم العثور على مستخدم بهذا الرقم.';
+    case 'profile_not_found':
+      return 'لم يتم العثور على ملف مرتبط بهذا الرقم.';
+    case 'too_many_requests':
+    case 'rate_limited':
+      return 'يرجى الانتظار قليلًا قبل إعادة الإرسال.';
+    case 'lightotp_api_key_missing':
+      return 'خدمة إرسال رمز واتساب غير مهيأة حالياً.';
+    case 'lightotp_send_failed':
+      return 'تعذر إرسال رمز التحقق عبر واتساب. حاول مجددًا.';
     case 'telegram_not_linked':
-      return 'هذا الرقم غير مرتبط بتيليجرام.';
+      return 'لم تعد طريقة تيليجرام مستخدمة. اطلب الرمز عبر واتساب.';
     case 'otp_delivery_method_invalid':
       return 'طريقة استلام الرمز غير مدعومة.';
     case 'sms_delivery_unavailable':
-      return 'خدمة الرسائل النصية غير متاحة حالياً.';
+      return 'لم تعد خدمة الرسائل النصية مستخدمة. اطلب الرمز عبر واتساب.';
     case 'proxy_notification_failed':
     case 'sms_proxy_send_failed':
-      return 'تعذر تجهيز إرسال الرمز عبر تطبيق البروكسي.';
+      return 'لم تعد طريقة إرسال الرمز السابقة مستخدمة. اطلب الرمز عبر واتساب.';
     default:
       return code && code.trim() ? code : 'حدث خطأ. حاول مجددًا.';
   }

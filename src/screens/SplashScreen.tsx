@@ -53,7 +53,11 @@ const SplashScreen: React.FC<Props> = ({ onDone }) => {
       setShowLogo(true);
 
       await logoRef.current?.animate(
-        { 0:{ scale:0.7, opacity:0 }, 0.6:{ scale:1.6, opacity:1 }, 1:{ scale:1.7} },
+        {
+          0: { transform: [{ scale: 0.7 }], opacity: 0 },
+          0.6: { transform: [{ scale: 1.6 }], opacity: 1 },
+          1: { transform: [{ scale: 1.7 }] },
+        },
       3000
       );
 

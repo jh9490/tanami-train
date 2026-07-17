@@ -1,9 +1,10 @@
 // CoursesScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components/native';
-import { ActivityIndicator, Alert, Dimensions, FlatList, I18nManager, RefreshControl } from 'react-native';
+import { Alert, Dimensions, FlatList, I18nManager, RefreshControl } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
+import AppLoading from './components/AppLoading';
 
 I18nManager.forceRTL(true);
 
@@ -148,7 +149,7 @@ const CoursesScreen: React.FC = () => {
   if (loading && !refreshing) {
     return (
       <Container>
-        <ActivityIndicator size="large" color="#111" style={{ marginTop: 24 }} />
+        <AppLoading style={{ backgroundColor: 'transparent' }} />
       </Container>
     );
   }

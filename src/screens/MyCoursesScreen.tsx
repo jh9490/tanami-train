@@ -5,12 +5,12 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { CourseItem } from '../types/api';
+import AppLoading from './components/AppLoading';
 
 type Phase = 'current' | 'upcoming' | 'previous';
 
@@ -52,7 +52,7 @@ export default function MyCoursesScreen({ navigation }: any) {
         setLoading(false);
       }
     },
-    [token, mobile]
+    [token, mobile, user?.username]
   );
 
   useEffect(() => {
@@ -73,11 +73,12 @@ export default function MyCoursesScreen({ navigation }: any) {
     const courseId = item.course?.id;
     const title = item.course?.name_ar || 'دورة';
     const activityId = item.activity?.id; // 👈 add this
+    const liveUrl = item.activity?.live_url ?? item.live_url ?? undefined;
     // prefer the fetched studentId; if missing, fall back to user.id if you have it
     // const resolvedStudentId = studentId ?? (user as any)?.id ?? undefined;
     // console.log(resolvedStudentId);
     if (!courseId) return;
-    navigation.navigate('CourseTabs', { courseId, title, activityId, studentId });
+    navigation.navigate('CourseTabs', { courseId, title, activityId, studentId, liveUrl });
   };
 
   return (
@@ -92,7 +93,7 @@ export default function MyCoursesScreen({ navigation }: any) {
       {/* list */}
       <View style={styles.listWrap}>
         {loading ? (
-          <ActivityIndicator size="large" color="#0f4f30" style={{ marginTop: 20 }} />
+          <AppLoading style={{ backgroundColor: 'transparent' }} />
         ) : (
           <FlatList
             data={data}

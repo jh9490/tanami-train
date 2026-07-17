@@ -19,8 +19,6 @@ import MenuScreen from '../screens/menu/MenuScreen';
 import VerifyCertificateScreen from '../screens/VerifyCertificateScreen';
 import ContactUsScreen from '../screens/ContactUsScreen';
 import OurLocationScreen from '../screens/OurLocationScreen';
-
-/* screens */
 import CVFormScreen from '../screens/cv/CVFormScreen';
 
 /* Auth screens */
@@ -47,6 +45,7 @@ export type RootStackParamList = {
   Splash: undefined;
   MainTabs: undefined;
   SubCourses: { title?: string } | undefined;
+  CVGenerator: undefined;
 
   AuthStack: { screen?: keyof AuthStackParamList } | undefined;
   AccountStack: { screen?: keyof AccountStackParamList } | undefined;
@@ -59,7 +58,6 @@ export type MainTabParamList = {
   Courses: undefined;
   Gallery: undefined;
   MenuRoot: undefined;
-  CVGenerator: undefined;
 };
 
 export type MenuStackParamList = {
@@ -67,7 +65,8 @@ export type MenuStackParamList = {
   VerifyCertificate: undefined;
   ContactUs: undefined;
   OurLocation: undefined;
-  MyPhotos:undefined;
+  MyPhotos: undefined;
+  Settings: undefined;
 };
 
 export type AuthStackParamList = {
@@ -137,6 +136,11 @@ function MenuStack() {
         component={MyPhotosScreen}
         options={{ title: 'صـوري' }}
       />
+      <MenuStackNav.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: 'الإعدادات' }}
+      />
     </MenuStackNav.Navigator>
   );
 }
@@ -204,14 +208,12 @@ function UserStack() {
 /* ===== Bottom Tabs ===== */
 function MainTabs() {
   const insets = useSafeAreaInsets();
-  const { isAuthenticated } = useAuth();
   const getHeaderTitle = (name: keyof MainTabParamList) => {
     switch (name) {
       case 'Home': return 'الرئيسية';
       case 'Courses': return 'الحقائب';
       case 'Gallery': return 'المعرض';
       case 'MenuRoot': return 'القائمة';
-      case 'CVGenerator': return 'سيرتي';
       default: return 'تنامي';
     }
   };
@@ -223,8 +225,7 @@ function MainTabs() {
           const iconName =
             route.name === 'Home' ? 'home' :
               route.name === 'Courses' ? 'book' :
-                route.name === 'Gallery' ? 'image' : 
-                  route.name === 'CVGenerator' ? 'description' : 'menu';
+                route.name === 'Gallery' ? 'image' : 'menu';
           const transform = I18nManager.isRTL ? [{ scaleX: -1 }] : undefined;
           return <Icon name={iconName} size={size} color={color} style={{ transform }} />;
         },
@@ -251,9 +252,6 @@ function MainTabs() {
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'الرئيسية' }} />
       <Tab.Screen name="Courses" component={CoursesScreen} options={{ tabBarLabel: 'الحقائب' }} />
       <Tab.Screen name="Gallery" component={GalleryScreen} options={{ tabBarLabel: 'المعرض' }} />
-      {isAuthenticated && (
-        <Tab.Screen name="CVGenerator" component={CVFormScreen} options={{ tabBarLabel: 'سيرتي' }} />
-      )}
       <Tab.Screen name="MenuRoot" component={MenuStack} options={{ tabBarLabel: 'القائمة', headerShown: false }} />
     </Tab.Navigator>
   );
@@ -275,6 +273,16 @@ function Root() {
           headerShown: true,
           ...headerCommon,
           title: 'الدورات',
+        }}
+      />
+
+      <RootStack.Screen
+        name="CVGenerator"
+        component={CVFormScreen}
+        options={{
+          headerShown: true,
+          ...headerCommon,
+          title: 'سيرتي',
         }}
       />
 

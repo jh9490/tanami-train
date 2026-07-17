@@ -1,12 +1,9 @@
 import { NativeModules, Platform } from 'react-native';
 
 import type {
-  CVEducation,
-  CVExperience,
   CVOperationError,
-  CVSkill,
+  CVOutputLanguage,
   CVTranslationAvailability,
-  NormalizedCVDraft,
 } from './cvTypes';
 
 type NativeTranslationAvailability = {
@@ -20,12 +17,33 @@ type NativeTranslationModule = {
   translateBatch(texts: string[], sourceLanguage: string, targetLanguage: string): Promise<string[]>;
 };
 
-type CVTranslationResult =
-  | { ok: true; draft: NormalizedCVDraft }
-  | { ok: false; error: CVOperationError };
+export type CVTranslationItem = {
+  id: string;
+  text: string;
+  allowProtectedTransform?: boolean;
+};
 
-const SOURCE_LANGUAGE = 'ar';
-const TARGET_LANGUAGE = 'en';
+export type CVTranslatedTextValue = {
+  id: string;
+  text: string;
+  source: 'translated' | 'preserved';
+};
+
+export type CVTranslationBatchResult =
+  | {
+      ok: true;
+      values: CVTranslatedTextValue[];
+    }
+  | {
+      ok: false;
+      error: CVOperationError;
+      failedIds: string[];
+      values: CVTranslatedTextValue[];
+    };
+
+function trimText(value: string): string {
+  return value.trim();
+}
 
 function buildError(
   code: CVOperationError['code'],
@@ -39,7 +57,11 @@ function buildError(
 function getNativeTranslationModule(): NativeTranslationModule | null {
   const translationModule = NativeModules.CVTranslationModule as NativeTranslationModule | undefined;
 
-  if (!translationModule || typeof translationModule.getAvailability !== 'function' || typeof translationModule.translateBatch !== 'function') {
+  if (
+    !translationModule ||
+    typeof translationModule.getAvailability !== 'function' ||
+    typeof translationModule.translateBatch !== 'function'
+  ) {
     return null;
   }
 
@@ -48,75 +70,55 @@ function getNativeTranslationModule(): NativeTranslationModule | null {
 
 function buildUnsupportedMessage(reason?: string): string {
   if (reason === 'platform_unsupported') {
-    return 'الترجمة إلى الإنجليزية متاحة حالياً على أجهزة Android المدعومة فقط. يمكنك إنشاء النسخة العربية الآن.';
+    return 'الترجمة التلقائية متاحة حالياً على أجهزة Android المدعومة فقط. يمكنك متابعة التحرير اليدوي دون فقدان البيانات.';
   }
 
   if (reason === 'language_unsupported') {
-    return 'هذا الجهاز لا يدعم ترجمة السيرة الذاتية من العربية إلى الإنجليزية ضمن المسار المحلي الحالي.';
+    return 'هذا الجهاز لا يدعم الزوج اللغوي المطلوب ضمن مسار الترجمة المحلي الحالي.';
   }
 
-  return 'تعذر العثور على خدمة الترجمة المحلية حالياً. يمكنك متابعة إنشاء النسخة العربية بدون فقدان البيانات.';
+  return 'تعذر العثور على خدمة الترجمة المحلية حالياً. يمكنك متابعة التحرير اليدوي أو المحاولة لاحقاً.';
 }
 
-function collectDraftTexts(draft: NormalizedCVDraft): string[] {
-  return [
-    draft.summary,
-    ...draft.experiences.flatMap(experience => [
-      experience.title,
-      experience.organization,
-      experience.duration,
-      experience.description,
-    ]),
-    ...draft.education.flatMap(education => [education.degree, education.institution, education.year]),
-    ...draft.skills.map(skill => skill.value),
-  ];
+function isEmail(value: string): boolean {
+  return /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(value);
 }
 
-function createNextValueGetter(translatedTexts: string[]): () => string {
-  let index = 0;
-
-  return () => translatedTexts[index++] ?? '';
+function isUrl(value: string): boolean {
+  return /https?:\/\/|www\./i.test(value);
 }
 
-function rebuildExperiences(experiences: CVExperience[], nextValue: () => string): CVExperience[] {
-  return experiences.map(experience => ({
-    ...experience,
-    title: nextValue(),
-    organization: nextValue(),
-    duration: nextValue(),
-    description: nextValue(),
+function isPhone(value: string): boolean {
+  const digits = value.replace(/[^\d+]/g, '');
+  return digits.length >= 7 && /^[+\d][\d\s()-]+$/.test(value.trim());
+}
+
+function isAcronym(value: string): boolean {
+  const tokens = value.trim().split(/\s+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every(token => /^[A-Z0-9&.+/-]{2,}$/.test(token));
+}
+
+function shouldPreserveText(text: string): boolean {
+  const value = trimText(text);
+  if (!value) {
+    return false;
+  }
+
+  return isEmail(value) || isUrl(value) || isPhone(value) || isAcronym(value);
+}
+
+function buildPreservedValues(items: CVTranslationItem[]): CVTranslatedTextValue[] {
+  return items.map(item => ({
+    id: item.id,
+    text: item.text,
+    source: 'preserved',
   }));
 }
 
-function rebuildEducation(education: CVEducation[], nextValue: () => string): CVEducation[] {
-  return education.map(item => ({
-    ...item,
-    degree: nextValue(),
-    institution: nextValue(),
-    year: nextValue(),
-  }));
-}
-
-function rebuildSkills(skills: CVSkill[], nextValue: () => string): CVSkill[] {
-  return skills.map(skill => ({
-    ...skill,
-    value: nextValue(),
-  }));
-}
-
-function rebuildTranslatedDraft(draft: NormalizedCVDraft, translatedTexts: string[]): NormalizedCVDraft {
-  const nextValue = createNextValueGetter(translatedTexts);
-
-  return {
-    fullName: draft.fullName,
-    summary: nextValue(),
-    experiences: rebuildExperiences(draft.experiences, nextValue),
-    education: rebuildEducation(draft.education, nextValue),
-    skills: rebuildSkills(draft.skills, nextValue),
-  };
-}
-
-export async function getEnglishTranslationAvailability(): Promise<CVTranslationAvailability> {
+export async function getTranslationAvailability(
+  sourceLanguage: CVOutputLanguage,
+  targetLanguage: CVOutputLanguage,
+): Promise<CVTranslationAvailability> {
   const translationModule = getNativeTranslationModule();
 
   if (!translationModule) {
@@ -128,7 +130,7 @@ export async function getEnglishTranslationAvailability(): Promise<CVTranslation
   }
 
   try {
-    const availability = await translationModule.getAvailability(SOURCE_LANGUAGE, TARGET_LANGUAGE);
+    const availability = await translationModule.getAvailability(sourceLanguage, targetLanguage);
     const supported = Boolean(availability.supported);
 
     if (supported) {
@@ -141,17 +143,34 @@ export async function getEnglishTranslationAvailability(): Promise<CVTranslation
       message: availability.message || buildUnsupportedMessage(availability.reason),
     };
   } catch (error) {
-    console.error('English translation availability check failed:', error);
+    console.error('Translation availability check failed:', error);
 
     return {
       supported: false,
       reason: 'availability_check_failed',
-      message: 'تعذر التحقق من توفر الترجمة الإنجليزية على هذا الجهاز حالياً. يمكنك متابعة النسخة العربية أو المحاولة لاحقاً.',
+      message: 'تعذر التحقق من توفر الترجمة على هذا الجهاز حالياً. يمكنك متابعة التحرير اليدوي أو المحاولة لاحقاً.',
     };
   }
 }
 
-export async function translateDraftToEnglish(draft: NormalizedCVDraft): Promise<CVTranslationResult> {
+export async function translateTextBatch(
+  items: CVTranslationItem[],
+  sourceLanguage: CVOutputLanguage,
+  targetLanguage: CVOutputLanguage,
+): Promise<CVTranslationBatchResult> {
+  const normalizedItems = items.filter(item => trimText(item.text).length > 0);
+  const preservedItems = normalizedItems.filter(
+    item => item.allowProtectedTransform !== true && shouldPreserveText(item.text),
+  );
+  const translatableItems = normalizedItems.filter(
+    item => item.allowProtectedTransform === true || !shouldPreserveText(item.text),
+  );
+  const preservedValues = buildPreservedValues(preservedItems);
+
+  if (!translatableItems.length) {
+    return { ok: true, values: preservedValues };
+  }
+
   const translationModule = getNativeTranslationModule();
   if (!translationModule) {
     return {
@@ -162,10 +181,12 @@ export async function translateDraftToEnglish(draft: NormalizedCVDraft): Promise
         'translation',
         false,
       ),
+      failedIds: translatableItems.map(item => item.id),
+      values: preservedValues,
     };
   }
 
-  const availability = await getEnglishTranslationAvailability();
+  const availability = await getTranslationAvailability(sourceLanguage, targetLanguage);
   if (!availability.supported) {
     return {
       ok: false,
@@ -175,27 +196,46 @@ export async function translateDraftToEnglish(draft: NormalizedCVDraft): Promise
         'translation',
         false,
       ),
+      failedIds: translatableItems.map(item => item.id),
+      values: preservedValues,
     };
   }
 
   try {
-    const translatedTexts = await translationModule.translateBatch(collectDraftTexts(draft), SOURCE_LANGUAGE, TARGET_LANGUAGE);
+    const translatedTexts = await translationModule.translateBatch(
+      translatableItems.map(item => item.text),
+      sourceLanguage,
+      targetLanguage,
+    );
 
     return {
       ok: true,
-      draft: rebuildTranslatedDraft(draft, translatedTexts),
+      values: [
+        ...preservedValues,
+        ...translatableItems.map((item, index) => ({
+          id: item.id,
+          text: translatedTexts[index] ?? item.text,
+          source: 'translated' as const,
+        })),
+      ],
     };
   } catch (error) {
-    console.error('English CV translation failed:', error);
+    console.error('CV draft sync translation failed:', error);
 
     return {
       ok: false,
       error: buildError(
-        'translation_failed',
-        'تعذر إكمال الترجمة الإنجليزية على الجهاز حالياً. قد تحتاج المحاولة الأولى إلى اتصال لتنزيل نموذج الترجمة ثم إعادة المحاولة.',
+        'field_sync_failed',
+        'تعذر مزامنة بعض الحقول على الجهاز حالياً. يمكنك تعديل الحقول المتأثرة يدوياً ثم المتابعة.',
         'translation',
         true,
       ),
+      failedIds: translatableItems.map(item => item.id),
+      values: preservedValues,
     };
   }
+}
+
+export async function getEnglishTranslationAvailability(): Promise<CVTranslationAvailability> {
+  return getTranslationAvailability('ar', 'en');
 }
