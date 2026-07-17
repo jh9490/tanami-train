@@ -28,6 +28,9 @@ build/
 .idea
 .gradle
 local.properties
+gradle.properties
+google-services.json
+GoogleService-Info.plist
 *.iml
 *.hprof
 .cxx/
