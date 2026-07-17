@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Alert,
-  Dimensions,
   I18nManager,
-  Image,
+  ImageBackground,
   RefreshControl,
   ScrollView,
   Text,
@@ -12,12 +11,12 @@ import {
 } from 'react-native';
 import styled from 'styled-components/native';
 import Carousel from 'react-native-reanimated-carousel';
-import { Extrapolate, interpolate } from 'react-native-reanimated';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import LinearGradient from 'react-native-linear-gradient';
 
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -28,16 +27,26 @@ import AppLoading from './components/AppLoading';
 
 I18nManager.forceRTL(true);
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PAGE_PADDING = 12;
-const POSTER_RATIO = 3 / 4;
-const GRID_GAP = 10;
+const PAGE_PADDING = 16;
+const COLORS = {
+  green: '#0f4f30',
+  greenDark: '#0c2a20',
+  gold: '#cbae82',
+  sand: '#fff8ef',
+  cream: '#fbf3e7',
+  sage: '#e8f1ea',
+  tile: '#f3f4f2',
+  border: '#e6e2d8',
+  ink: '#151515',
+  muted: '#6b7280',
+  white: '#ffffff',
+};
 
 const BASE = 'http://tanamitrain.com/tanamiAdmin';
 const SLIDERS_URL = `${BASE}/api/mobile-app/sliders`;
 const ACTIVITIES_URL = `${BASE}/api/mobile-app/activities`;
 
-type SliderItem = { id: string; image: string; link?: string };
+type SliderItem = { id: string; image: string; link?: string; title?: string; subtitle?: string; cta?: string };
 type CourseBucketKey = 'current' | 'upcoming';
 type HomeExternalLink = {
   id: string;
@@ -50,12 +59,6 @@ type HomeGridItemProps = {
   label: string;
   onPress: () => void;
 };
-type CourseSection = {
-  key: CourseBucketKey;
-  title: string;
-  items: CourseLite[];
-};
-
 const HOME_EXTERNAL_LINKS: HomeExternalLink[] = [
   {
     id: 'facebook',
@@ -85,91 +88,137 @@ const HOME_EXTERNAL_LINKS: HomeExternalLink[] = [
 
 const Screen = styled.View`
   flex: 1;
-  background-color: #fff1e2;
+  background-color: ${COLORS.sand};
 `;
 
-const SlideTouchable = styled.TouchableOpacity``;
-const SlideImage = styled.Image`
-  width: ${SCREEN_WIDTH}px;
-  height: 200px;
-  border-radius: 10px;
-  margin: 16px 0;
+const HomeSection = styled.View`
+  margin-top: 18px;
+  position: relative;
+`;
+
+const HeroSection = styled.View`
+  position: relative;
+  overflow: hidden;
+  background-color: ${COLORS.greenDark};
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+`;
+
+const SlideTouchable = styled.TouchableOpacity<{ h: number }>`
+  width: 100%;
+  height: ${({ h }) => h}px;
+  overflow: hidden;
+  background-color: #e9e7e0;
+`;
+
+const SlideBg = styled(ImageBackground)<{ h: number }>`
+  width: 100%;
+  height: ${({ h }) => h}px;
+`;
+
+const HeroDots = styled.View`
+  position: absolute;
+  left: ${PAGE_PADDING}px;
+  bottom: 18px;
+  flex-direction: row;
+  align-items: center;
+  z-index: 3;
+`;
+
+const HeroDot = styled.View<{ active: boolean }>`
+  width: ${({ active }) => (active ? 28 : 8)}px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: ${({ active }) => (active ? COLORS.white : 'rgba(255, 255, 255, 0.38)')};
+  margin-right: 5px;
 `;
 
 const AuthCard = styled.View`
-  margin: 6px ${PAGE_PADDING}px 16px;
-  background: #eceadf;
-  border-radius: 14px;
-  padding: 14px;
+  margin: 14px ${PAGE_PADDING}px 4px;
+  background: ${COLORS.white};
+  border-radius: 24px;
+  padding: 18px;
+  border-width: 1px;
+  border-color: ${COLORS.border};
   shadow-color: #000;
-  shadow-opacity: 0.06;
-  shadow-radius: 8px;
+  shadow-opacity: 0.04;
+  shadow-radius: 10px;
   shadow-offset: 0px 2px;
   elevation: 2;
 `;
 
 const AuthTitle = styled.Text`
-  font-size: 14px;
-  color: #0f4f30;
+  font-size: 18px;
+  line-height: 28px;
+  color: ${COLORS.green};
   font-family: 'NotoKufiArabic-Bold';
   text-align: center;
 `;
 
 const AuthSubtitle = styled.Text`
   font-size: 12px;
-  color: #6b7280;
+  line-height: 20px;
+  color: ${COLORS.muted};
   text-align: center;
   margin-top: 4px;
   font-family: 'NotoKufiArabic-Regular';
 `;
 
 const GridItemWrap = styled.TouchableOpacity`
-  background-color: #fff1e2;
-  border-radius: 12px;
-  padding-vertical: 16px;
+  background-color: ${COLORS.tile};
+  border-radius: 15px;
+  min-height: 92px;
+  padding-vertical: 12px;
   align-items: center;
   justify-content: center;
-  border-width: 1px;
-  border-color: #f0e4c9;
   flex: 1;
   margin: 6px;
 `;
 
 const GridItemLabel = styled.Text`
   margin-top: 8px;
-  color: #111;
+  color: ${COLORS.greenDark};
   font-family: 'NotoKufiArabic-Bold';
   font-size: 12px;
 `;
 
 const PrimaryBtn = styled.TouchableOpacity`
-  background: #0f4f30;
-  padding: 10px 16px;
-  border-radius: 10px;
-  min-width: 130px;
+  background: ${COLORS.green};
+  padding: 11px 18px;
+  border-radius: 999px;
+  min-width: 142px;
   align-items: center;
 `;
 
 const PrimaryText = styled.Text`
-  color: #eceadf;
+  color: ${COLORS.white};
   font-size: 13px;
   font-family: 'NotoKufiArabic-Bold';
 `;
 
 const CoursesHeader = styled.View`
-  padding: 10px ${PAGE_PADDING}px 0;
+  padding: 0 ${PAGE_PADDING}px 10px;
 `;
 
 const SectionTitle = styled.Text`
-  font-size: 14px;
-  color: #0f4f30;
+  font-size: 19px;
+  line-height: 30px;
+  color: ${COLORS.ink};
   font-family: 'NotoKufiArabic-Bold';
-  margin-bottom: 6px;
   text-align: center;
+  writing-direction: rtl;
 `;
 
 const CourseSectionBlock = styled.View`
-  margin-top: 10px;
+  margin-top: 2px;
+  align-items: center;
+`;
+
+const RadarStaticRow = styled.View`
+  width: 100%;
+  flex-direction: row;
+  justify-content: center;
+  padding-horizontal: ${PAGE_PADDING}px;
 `;
 
 const EmptyCoursesText = styled.Text`
@@ -180,44 +229,55 @@ const EmptyCoursesText = styled.Text`
   font-family: 'NotoKufiArabic-Regular';
 `;
 
-const GridWrap = styled.View`
-  padding: 0 ${PAGE_PADDING}px;
-`;
-
-const GridRow = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  margin-bottom: ${GRID_GAP}px;
-`;
-
-const Card = styled.TouchableOpacity<{ w: number; h: number }>`
+const RadarCard = styled.TouchableOpacity<{ w: number; h: number }>`
   width: ${({ w }) => w}px;
   height: ${({ h }) => h}px;
-  border-radius: 16px;
+  border-radius: 0px;
   overflow: hidden;
-  background: #f6efe6;
-  position: relative;
+  background-color: #eee6dc;
+  margin-horizontal: 5px;
 `;
 
-const CourseRibbon = styled.View<{ w: number }>`
+const RadarImageBg = styled(ImageBackground)`
+  width: 100%;
+  height: 100%;
+`;
+
+const RadarPill = styled.View`
   position: absolute;
-  top: ${({ w }) => Math.max(8, Math.round(w * 0.06))}px;
-  left: ${({ w }) => Math.round((w - Math.max(72, Math.min(104, w * 0.54))) / 2)}px;
-  width: ${({ w }) => Math.max(72, Math.min(104, Math.round(w * 0.54)))}px;
-  height: ${({ w }) => Math.max(22, Math.min(28, Math.round(w * 0.16)))}px;
+  top: 14px;
+  align-self: center;
+  min-width: 92px;
+  max-width: 86%;
+  height: 36px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.88);
   align-items: center;
   justify-content: center;
-  background-color: rgba(255, 255, 255, 0.82);
-  border-radius: 999px;
-  z-index: 2;
+  padding-horizontal: 14px;
 `;
 
-const CourseRibbonText = styled.Text`
-  color: #0f4f30;
+const RadarPillText = styled.Text`
+  color: ${COLORS.ink};
   font-family: 'NotoKufiArabic-Bold';
-  font-size: 10px;
+  font-size: 12px;
+`;
+
+const RadarTitle = styled.Text`
+  color: ${COLORS.white};
+  font-family: 'NotoKufiArabic-Bold';
+  font-size: 17px;
+  line-height: 27px;
   text-align: center;
-  writing-direction: rtl;
+`;
+
+const RadarMeta = styled.Text`
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.86);
+  font-family: 'NotoKufiArabic-Regular';
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
 `;
 
 const SocialSection = styled.View`
@@ -254,7 +314,7 @@ const toAbs = (rel?: string | null) => (rel ? `${BASE}${rel}` : undefined);
 
 const HomeGridItem = ({ icon, label, onPress }: HomeGridItemProps) => (
   <GridItemWrap onPress={onPress} activeOpacity={0.8}>
-    <MaterialIcon name={icon} size={28} color="#0f4f30" />
+    <MaterialIcon name={icon} size={24} color={COLORS.green} />
     <GridItemLabel>{label}</GridItemLabel>
   </GridItemWrap>
 );
@@ -283,24 +343,21 @@ export default function HomeScreen() {
   });
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseLite | null>(null);
+  const [activeHeroIndex, setActiveHeroIndex] = useState(0);
 
   const { width: windowWidth } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isAuthenticated, displayName, token } = useAuth();
 
-  const courseSections = useMemo<CourseSection[]>(
-    () =>
-      [
-        { key: 'current' as const, title: 'حاليا', items: courses.current },
-        { key: 'upcoming' as const, title: 'قادمة', items: courses.upcoming },
-      ].filter(section => section.items.length > 0),
+  const happeningItems = useMemo(
+    () => [...courses.current, ...courses.upcoming].slice(0, 12),
     [courses],
   );
-
-  const columns = 2;
-  const totalGaps = (columns - 1) * GRID_GAP;
-  const cardW = Math.floor((windowWidth - PAGE_PADDING * 2 - totalGaps) / columns);
-  const cardH = Math.round(cardW / POSTER_RATIO);
+  const heroHeight = Math.max(245, Math.min(330, Math.round(windowWidth * 0.68)));
+  const compactRadarCardW = Math.floor((windowWidth - PAGE_PADDING * 2 - 12) / 2);
+  const carouselRadarCardW = Math.max(210, Math.min(270, Math.round(windowWidth * 0.68)));
+  const radarCardW = happeningItems.length <= 2 ? compactRadarCardW : carouselRadarCardW;
+  const radarCardH = Math.round(radarCardW * 1.34);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -313,7 +370,14 @@ export default function HomeScreen() {
         .map((slider: any) => {
           const image = toAbs(slider.image0?.p50 || slider.image0?.url);
           if (!image) return null;
-          return { id: String(slider.id), image, link: slider.link ?? undefined };
+          return {
+            id: String(slider.id),
+            image,
+            link: slider.link ?? undefined,
+            title: slider.title || slider.name || slider.headline || 'تنامي ترين',
+            subtitle: slider.subtitle || slider.description || 'رحلتك التعليمية تبدأ من هنا',
+            cta: slider.cta || slider.button_text || 'اكتشف المزيد',
+          };
         })
         .filter(Boolean) as SliderItem[];
 
@@ -368,124 +432,125 @@ export default function HomeScreen() {
     fetchAll();
   }, [fetchAll]);
 
-  const renderCourseGrid = (section: CourseSection) => {
-    const rows: CourseLite[][] = [];
-    for (let index = 0; index < section.items.length; index += columns) {
-      rows.push(section.items.slice(index, index + columns));
-    }
+  const getCourseStatusLabel = (item: CourseLite) => {
+    if (item.live) return 'مباشر';
+    const isCurrent = courses.current.some(course => course.id === item.id);
+    return isCurrent ? 'حاليًا' : 'قادم';
+  };
+
+  const renderRadarCard = (item: CourseLite) => {
+    const title = item.nameAr || item.title || '—';
+    const metaParts = [item.date, item.days ? `${item.days} أيام` : null].filter(Boolean);
 
     return (
-      <GridWrap>
-        {rows.map((row, rowIndex) => (
-          <GridRow key={`row-${rowIndex}`}>
-            {row.map(item => (
-              <Card
-                key={item.id}
-                w={cardW}
-                h={cardH}
-                activeOpacity={0.9}
-                onPress={() => {
-                  setSelectedCourse(item);
-                  setDetailsOpen(true);
-                }}
-              >
-                {item.image ? (
-                  <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                ) : (
-                  <PlaceholderPoster width={cardW} height={cardH} />
-                )}
-
-                <CourseRibbon pointerEvents="none" w={cardW}>
-                  <CourseRibbonText numberOfLines={1}>{section.title}</CourseRibbonText>
-                </CourseRibbon>
-
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    paddingVertical: 6,
-                    paddingHorizontal: 8,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    zIndex: 1,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: '#fff',
-                      fontFamily: 'NotoKufiArabic-Bold',
-                      fontSize: 12,
-                      textAlign: 'center',
-                    }}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
-                    {item.nameAr || item.title || '—'}
-                  </Text>
-                </View>
-              </Card>
-            ))}
-
-            {row.length === 1 ? <View style={{ width: cardW }} /> : null}
-          </GridRow>
-        ))}
-      </GridWrap>
+      <RadarCard
+        key={item.id}
+        w={radarCardW}
+        h={radarCardH}
+        activeOpacity={0.9}
+        onPress={() => {
+          setSelectedCourse(item);
+          setDetailsOpen(true);
+        }}
+      >
+        {item.image ? (
+          <RadarImageBg source={{ uri: item.image }} resizeMode="cover">
+            <LinearGradient
+              colors={['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.72)']}
+              style={{ flex: 1, justifyContent: 'space-between', padding: 14 }}
+            >
+              <RadarPill pointerEvents="none">
+                <RadarPillText numberOfLines={1}>{getCourseStatusLabel(item)}</RadarPillText>
+              </RadarPill>
+              <View />
+              <View pointerEvents="none">
+                <RadarTitle numberOfLines={2}>{title}</RadarTitle>
+                {metaParts.length ? <RadarMeta numberOfLines={1}>{metaParts.join(' • ')}</RadarMeta> : null}
+              </View>
+            </LinearGradient>
+          </RadarImageBg>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <PlaceholderPoster width={radarCardW} height={radarCardH} />
+            <RadarPill pointerEvents="none">
+              <RadarPillText numberOfLines={1}>{getCourseStatusLabel(item)}</RadarPillText>
+            </RadarPill>
+          </View>
+        )}
+      </RadarCard>
     );
   };
+
+  const renderActionRows = () => (
+    <>
+      <View style={{ flexDirection: 'row', marginTop: 12 }}>
+        <HomeGridItem
+          icon="manage-accounts"
+          label="حسابي"
+          onPress={() => navigation.navigate('AccountStack', { screen: 'Account' })}
+        />
+        <HomeGridItem
+          icon="description"
+          label="سيرتي"
+          onPress={() => navigation.navigate('CVGenerator')}
+        />
+      </View>
+      <View style={{ flexDirection: 'row' }}>
+        <HomeGridItem
+          icon="notifications"
+          label="إشعاراتي"
+          onPress={() => navigation.navigate('UserStack', { screen: 'MyNotifications' })}
+        />
+        <HomeGridItem
+          icon="collections-bookmark"
+          label="دوراتي"
+          onPress={() => navigation.navigate('UserStack', { screen: 'MyCourses' })}
+        />
+      </View>
+      <View style={{ flexDirection: 'row' }}>
+        <HomeGridItem
+          icon="how-to-reg"
+          label="طلبات التسجيل"
+          onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+        />
+        <HomeGridItem
+          icon="verified"
+          label="تحقق من شهادة"
+          onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
+        />
+      </View>
+    </>
+  );
 
   const renderAuthSection = () => {
     if (isAuthenticated) {
       return (
         <AuthCard>
           <AuthTitle>أهلًا، {displayName ?? 'مستخدم'}</AuthTitle>
-          <AuthSubtitle>يمكنك الوصول إلى حسابك وإدارة بياناتك</AuthSubtitle>
+          <AuthSubtitle>تابع رحلتك مع تنامي من مكان واحد</AuthSubtitle>
 
-          <View style={{ flexDirection: 'row', marginTop: 12 }}>
-            <HomeGridItem
-              icon="manage-accounts"
-              label="حسابي"
-              onPress={() => navigation.navigate('AccountStack', { screen: 'Account' })}
-            />
-            <HomeGridItem
-              icon="description"
-              label="سيرتي"
-              onPress={() => navigation.navigate('CVGenerator')}
-            />
-          </View>
-          <View style={{ flexDirection: 'row' }}>
-            <HomeGridItem
-              icon="notifications"
-              label="إشعاراتي"
-              onPress={() => navigation.navigate('UserStack', { screen: 'MyNotifications' })}
-            />
-            <HomeGridItem
-              icon="collections-bookmark"
-              label="دوراتي"
-              onPress={() => navigation.navigate('UserStack', { screen: 'MyCourses' })}
-            />
-          </View>
-          <View style={{ flexDirection: 'row' }}>
-            <HomeGridItem
-              icon="how-to-reg"
-              label="طلبات التسجيل"
-              onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
-            />
-            <HomeGridItem
-              icon="verified"
-              label="تحقق من شهادة"
-              onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
-            />
-          </View>
+          {renderActionRows()}
         </AuthCard>
       );
     }
 
     return (
       <AuthCard>
-        <AuthTitle>ابدأ الرحلة مع تنامي ترين</AuthTitle>
-        <AuthSubtitle>أنشئ حسابًا للوصول إلى جميع المميزات</AuthSubtitle>
+        <AuthTitle>ابدأ رحلتك مع تنامي</AuthTitle>
+        <AuthSubtitle>سجّل الآن للوصول إلى دوراتك، شهاداتك، وإشعاراتك بسهولة</AuthSubtitle>
+
+        <View style={{ flexDirection: 'row', marginTop: 12 }}>
+          <HomeGridItem
+            icon="school"
+            label="الدورات"
+            onPress={() => navigation.navigate('MainTabs')}
+          />
+          <HomeGridItem
+            icon="verified"
+            label="الشهادات"
+            onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
+          />
+        </View>
 
         <PrimaryBtn
           style={{ alignSelf: 'center', marginTop: 16 }}
@@ -498,7 +563,7 @@ export default function HomeScreen() {
           style={{
             marginTop: 12,
             fontSize: 13,
-            color: '#0f4f30',
+            color: COLORS.green,
             fontFamily: 'NotoKufiArabic-Bold',
             textAlign: 'center',
             textDecorationLine: 'underline',
@@ -511,25 +576,22 @@ export default function HomeScreen() {
     );
   };
 
-  const renderHeaderBlock = () => (
-    <View>
-      {sliderItems.length > 0 ? (
+  const renderHeroSlider = () => {
+    if (!sliderItems.length) {
+      return null;
+    }
+
+    return (
+      <HeroSection>
         <Carousel<SliderItem>
-          width={SCREEN_WIDTH}
-          height={200}
+          width={windowWidth}
+          height={heroHeight}
           loop
           autoPlay
           autoPlayInterval={6000}
-          scrollAnimationDuration={1200}
+          scrollAnimationDuration={900}
           windowSize={5}
-          mode="parallax"
-          customAnimation={(value: number) => {
-            'worklet';
-            const distance = Math.abs(value);
-            const opacity = interpolate(distance, [0, 0.5, 1], [1, 0.6, 0], Extrapolate.CLAMP);
-            const scale = interpolate(distance, [0, 1], [1, 0.98], Extrapolate.CLAMP);
-            return { opacity, transform: [{ scale }] };
-          }}
+          onSnapToItem={index => setActiveHeroIndex(index)}
           onConfigurePanGesture={gesture => {
             'worklet';
             gesture.activeOffsetX([-20, 20]);
@@ -537,39 +599,83 @@ export default function HomeScreen() {
           }}
           renderItem={({ item }) => (
             <SlideTouchable
+              h={heroHeight}
               activeOpacity={0.9}
               onPress={() => {
                 if (item.link) {
                   openLinkSafe(item.link);
                 }
               }}
-              style={{ width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#e9e7e0' }}
             >
-              <SlideImage source={{ uri: item.image }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+              <SlideBg source={{ uri: item.image }} resizeMode="contain" h={heroHeight}>
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.03)', 'rgba(0,0,0,0.16)']}
+                  style={{ flex: 1 }}
+                />
+              </SlideBg>
             </SlideTouchable>
           )}
           data={sliderItems}
         />
-      ) : null}
 
-      {renderAuthSection()}
-    </View>
-  );
+        {sliderItems.length > 1 ? (
+          <HeroDots pointerEvents="none">
+            {sliderItems.map((item, index) => (
+              <HeroDot key={item.id} active={index === activeHeroIndex} />
+            ))}
+          </HeroDots>
+        ) : null}
+      </HeroSection>
+    );
+  };
 
-  const renderCourseSections = () => {
+  const renderHappeningSection = () => {
     if (loading) {
       return null;
     }
 
-    if (!courseSections.length) {
+    if (!happeningItems.length) {
       return <EmptyCoursesText>لا توجد دورات حالية أو قادمة لعرضها حاليًا</EmptyCoursesText>;
     }
 
-    return courseSections.map(section => (
-      <CourseSectionBlock key={section.key}>
-        {renderCourseGrid(section)}
+    if (happeningItems.length <= 2) {
+      return (
+        <CourseSectionBlock>
+          <RadarStaticRow>
+            {happeningItems.map(item => (
+              <View key={item.id} style={{ marginHorizontal: 3 }}>
+                {renderRadarCard(item)}
+              </View>
+            ))}
+          </RadarStaticRow>
+        </CourseSectionBlock>
+      );
+    }
+
+    return (
+      <CourseSectionBlock>
+        <Carousel<CourseLite>
+          width={windowWidth}
+          height={radarCardH}
+          style={{ width: windowWidth }}
+          loop={happeningItems.length > 2}
+          autoPlay={happeningItems.length > 2}
+          autoPlayInterval={4700}
+          scrollAnimationDuration={1600}
+          data={happeningItems}
+          onConfigurePanGesture={gesture => {
+            'worklet';
+            gesture.activeOffsetX([-20, 20]);
+            gesture.failOffsetY([-12, 12]);
+          }}
+          renderItem={({ item }) => (
+            <View style={{ width: windowWidth, alignItems: 'center' }}>
+              {renderRadarCard(item)}
+            </View>
+          )}
+        />
       </CourseSectionBlock>
-    ));
+    );
   };
 
   const renderFooterSocial = () => (
@@ -598,12 +704,16 @@ export default function HomeScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={{ paddingBottom: 32 }}
         >
-          {renderHeaderBlock()}
+          {renderHeroSlider()}
 
-          <CoursesHeader>
-            <SectionTitle>يحدث في تنامي</SectionTitle>
-          </CoursesHeader>
-          {renderCourseSections()}
+          {renderAuthSection()}
+
+          <HomeSection>
+            <CoursesHeader>
+              <SectionTitle>يحدث في تنامي</SectionTitle>
+            </CoursesHeader>
+            {renderHappeningSection()}
+          </HomeSection>
           {renderFooterSocial()}
         </ScrollView>
 
