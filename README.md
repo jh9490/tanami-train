@@ -1,97 +1,171 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# TanamiTrain
 
-# Getting Started
+TanamiTrain is a React Native mobile app for Tanami training services. The app is Arabic-first, RTL-oriented, and connects to the Tanami backend for authentication, courses, registrations, notifications, media, certificate verification, and CV generation.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+Current Android release metadata:
 
-## Step 1: Start Metro
+- Application ID: `com.tanamitrain`
+- Version name: `1.1.1`
+- Version code: `24`
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## Features
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+- Arabic RTL navigation and UI.
+- Public home, course, gallery, location, and contact sections.
+- Mobile authentication with sign up, sign in, OTP verification, password reset, and profile management.
+- User course area with course details, activity files, live YouTube preview support, registrations, certificates, and notifications.
+- Firebase Cloud Messaging registration and notification inbox acknowledgements.
+- Certificate verification from scanned or entered certificate tokens.
+- Photo/gallery viewing and user photo access.
+- CV builder with Arabic/English draft support, translation helpers, PDF generation, and sharing.
 
-```sh
-# Using npm
-npm start
+## Tech Stack
 
-# OR using Yarn
-yarn start
+- React Native `0.80.0`
+- React `19.1.0`
+- TypeScript `5.x`
+- React Navigation `7`
+- Firebase Messaging via `@react-native-firebase/app` and `@react-native-firebase/messaging`
+- Android ML Kit translation through the native Android bridge
+- `react-native-html-to-pdf` and `react-native-share` for CV export
+- `@react-native-async-storage/async-storage` for local app state/session persistence
+
+## Project Structure
+
+```text
+android/                 Android native project
+ios/                     iOS native project
+src/
+  auth/                  OTP and auth helpers
+  context/               Auth context and session state
+  navigation/            Root, tab, auth, account, and user stacks
+  screens/               App screens and screen components
+  services/              API, notifications, CV rendering/export
+  storage/               AsyncStorage helpers
+  theme/                 RTL styling helpers
+  types/                 Shared API and native module types
+  util/                  Device, phone, linking, and media helpers
+__tests__/               Jest tests
+specs/                   Feature specifications and planning artifacts
 ```
 
-## Step 2: Build and run your app
+## Prerequisites
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+- Node.js `>=18`
+- npm or Yarn
+- React Native development environment for Android and/or iOS
+- Android Studio and a configured emulator/device for Android
+- Xcode and CocoaPods for iOS on macOS
 
-### Android
+Follow the official React Native environment setup for the target platform before running the app.
 
-```sh
-# Using npm
-npm run android
+## Local Configuration
 
-# OR using Yarn
-yarn android
+Some native configuration files are intentionally not tracked in git because they contain local or sensitive values.
+
+Required local Android files:
+
+- `android/gradle.properties`
+- `android/app/google-services.json`
+
+Use `android/gradle.properties.example` as the template for local signing properties:
+
+```properties
+MYAPP_UPLOAD_STORE_FILE=your-release-key.keystore
+MYAPP_UPLOAD_KEY_ALIAS=your-key-alias
+MYAPP_UPLOAD_STORE_PASSWORD=change-me
+MYAPP_UPLOAD_KEY_PASSWORD=change-me
 ```
 
-### iOS
+Do not commit real signing passwords, keystores, Firebase config files, or other credentials.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Install
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+```sh
+npm install
+```
+
+For iOS:
 
 ```sh
 bundle install
+bundle exec pod install --project-directory=ios
 ```
 
-Then, and every time you update your native dependencies, run:
+## Run
+
+Start Metro:
 
 ```sh
-bundle exec pod install
+npm start
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Run Android:
 
 ```sh
-# Using npm
+npm run android
+```
+
+Run iOS:
+
+```sh
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Test and Lint
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+```sh
+npm test
+npm run lint
+```
 
-## Step 3: Modify your app
+## Android Release Notes
 
-Now that you have successfully run the app, let's make changes!
+Release signing is configured in `android/app/build.gradle` and reads values from local Gradle properties. Keep release credentials only on trusted developer or CI machines.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+The release build currently enables code minification:
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+```gradle
+minifyEnabled true
+shrinkResources false
+```
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+Before producing a release, verify:
 
-## Congratulations! :tada:
+- `android/gradle.properties` contains valid local signing values.
+- `android/app/google-services.json` matches the Firebase project for this app.
+- The Android version code and version name are updated as needed.
+- PDF export, notifications, certificate verification, and authenticated course flows work on a real device or emulator.
 
-You've successfully run and modified your React Native App. :partying_face:
+## Backend
 
-### Now what?
+The app uses the Tanami backend under:
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+```text
+https://tanamitrain.com/tanamiAdmin
+```
 
-# Troubleshooting
+Main mobile endpoints are accessed through:
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+```text
+/api/mobile-app
+```
 
-# Learn More
+Firebase notification endpoints are accessed through:
 
-To learn more about React Native, take a look at the following resources:
+```text
+/api/fcm
+```
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+## Security
+
+This repository should not contain local secrets. If a secret is committed or pushed by mistake:
+
+1. Rotate the exposed credential immediately.
+2. Remove the file from git tracking.
+3. Rewrite repository history if the secret reached a shared or public remote.
+4. Force-push the cleaned history only after coordinating with other collaborators.
+
+## Privacy
+
+See `PRIVACY_POLICY.md` for the app privacy policy.
