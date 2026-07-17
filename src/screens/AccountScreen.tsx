@@ -8,6 +8,21 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import type { Profile, UpdateProfileBody } from '../types/api';
+import AppLoading from './components/AppLoading';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const COLORS = {
+  green: '#0f4f30',
+  greenDark: '#0c2a20',
+  gold: '#cbae82',
+  sand: '#fff8ef',
+  cream: '#fbf3e7',
+  sage: '#e8f1ea',
+  border: '#e6e2d8',
+  ink: '#151515',
+  muted: '#6b7280',
+  white: '#ffffff',
+};
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const isDate  = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -29,6 +44,7 @@ const fromYMD = (s?: string | null) => {
 
 export default function AccountScreen() {
   const { user, token, signOut, refreshProfile } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -191,17 +207,18 @@ export default function AccountScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff1e2' }}
+      style={{ flex: 1, backgroundColor: COLORS.sand }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: 24 + kbHeight }}
+        contentContainerStyle={{ paddingBottom: 40 + kbHeight + insets.bottom }}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.card}>
           <Text style={styles.title}>الملف الشخصي</Text>
+          <Text style={styles.subtitle}>حدّث بياناتك وخلي حسابك جاهز لكل خدمات تنامي</Text>
 
           {!!initial?.pending_approval && initial.pending_approval === 1 && (
             <View style={styles.banner}>
@@ -209,7 +226,7 @@ export default function AccountScreen() {
             </View>
           )}
 
-          <View style={styles.row}>
+          <View style={styles.phoneRow}>
             <Text style={styles.label}>رقم الجوال</Text>
             <Text style={styles.value}>{user?.username || '—'}</Text>
           </View>
@@ -285,16 +302,15 @@ export default function AccountScreen() {
             onPress={handleSave}
             disabled={!changed || saving}
           >
-            {saving ? <ActivityIndicator color="#eceadf" /> : <Text style={styles.primaryText}>حفظ</Text>}
+            {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.primaryText}>حفظ</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 10 }]} onPress={handleLogout}>
             <Text style={styles.secondaryText}>تسجيل الخروج</Text>
           </TouchableOpacity>
         </View>
-
-        {loading && <ActivityIndicator style={{ marginTop: 12 }} />}
       </ScrollView>
+      {loading ? <AppLoading overlay text="يتم تحميل بيانات الحساب" /> : null}
     </KeyboardAvoidingView>
   );
 }
@@ -307,42 +323,69 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff1e2', padding: 16 },
+  container: { flex: 1, backgroundColor: COLORS.sand, padding: 16 },
   card: {
-    backgroundColor: '#eceadf',
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  title: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 18, color: '#111', marginBottom: 12 },
-  banner: { backgroundColor: '#fff4e6', borderColor: '#d9480f', borderWidth: 1, padding: 8, borderRadius: 10, marginBottom: 8 },
-  bannerText: { fontFamily: 'NotoKufiArabic-Bold', color: '#7a3e00', fontSize: 13, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, justifyContent: 'space-between' },
-  label: { fontFamily: 'NotoKufiArabic-Bold', color: '#6b7280', fontSize: 13 },
-  value: { fontFamily: 'NotoKufiArabic-Regular', color: '#111', fontSize: 14 },
-  input: {
-    backgroundColor: '#eceadf',
-    borderRadius: 12,
+  title: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 20, lineHeight: 32, color: COLORS.ink, textAlign: 'center' },
+  subtitle: {
+    fontFamily: 'NotoKufiArabic-Regular',
+    fontSize: 12,
+    lineHeight: 20,
+    color: COLORS.muted,
+    textAlign: 'center',
+    marginTop: 2,
+    marginBottom: 14,
+  },
+  banner: {
+    backgroundColor: '#fff6e8',
+    borderColor: COLORS.gold,
     borderWidth: 1,
-    borderColor: '#0f4f30',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    padding: 10,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  bannerText: { fontFamily: 'NotoKufiArabic-Bold', color: '#7a5200', fontSize: 13, textAlign: 'center' },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.sage,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  label: { fontFamily: 'NotoKufiArabic-Bold', color: COLORS.greenDark, fontSize: 13 },
+  value: { fontFamily: 'NotoKufiArabic-Regular', color: COLORS.ink, fontSize: 14 },
+  input: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 14,
-    color: '#111',
+    color: COLORS.ink,
   },
   primaryBtn: {
-    marginTop: 16, backgroundColor: '#0f4f30', paddingVertical: 12,
-    borderRadius: 12, alignItems: 'center'
+    marginTop: 18, backgroundColor: COLORS.green, paddingVertical: 13,
+    borderRadius: 999, alignItems: 'center'
   },
-  primaryText: { color: '#eceadf', fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
+  primaryText: { color: COLORS.white, fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
   secondaryBtn: {
-    backgroundColor: 'transparent', paddingVertical: 12, borderRadius: 12,
-    borderWidth: 1, borderColor: '#0f4f30', alignItems: 'center'
+    backgroundColor: COLORS.cream, paddingVertical: 12, borderRadius: 999,
+    borderWidth: 1, borderColor: COLORS.border, alignItems: 'center'
   },
-  secondaryText: { color: '#0f4f30', fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
+  secondaryText: { color: COLORS.green, fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
 });

@@ -46,6 +46,20 @@ import {
 } from '../../services/cvService';
 import { loadStoredCVDraft, saveStoredCVDraft } from '../../storage/cvDraftStorage';
 
+const COLORS = {
+  green: '#0f4f30',
+  greenDark: '#0c2a20',
+  gold: '#cbae82',
+  sand: '#fff8ef',
+  cream: '#fbf3e7',
+  sage: '#e8f1ea',
+  border: '#e6e2d8',
+  ink: '#151515',
+  muted: '#6b7280',
+  white: '#ffffff',
+  danger: '#d9534f',
+};
+
 const LANGUAGE_COPY = {
   ar: {
     pageDescription:
@@ -305,6 +319,9 @@ export default function CVFormScreen() {
 
   const activeLanguage = draft.editingLanguage;
   const copy = LANGUAGE_COPY[activeLanguage];
+  const isArabic = activeLanguage === 'ar';
+  const languageTextStyle = isArabic ? styles.textArabic : styles.textEnglish;
+  const languageInputStyle = isArabic ? styles.inputArabic : styles.inputEnglish;
 
   useEffect(() => {
     if (loading || !isAuthenticated) {
@@ -962,7 +979,7 @@ export default function CVFormScreen() {
 
   const renderFieldStatus = (field: CVLocalizedField) => {
     if (field.syncState === 'failed' && field.failureReason) {
-      return <Text style={[styles.fieldNote, styles.fieldNoteError]}>{field.failureReason}</Text>;
+      return <Text style={[styles.fieldNote, styles.fieldNoteError, languageTextStyle]}>{field.failureReason}</Text>;
     }
 
     if (
@@ -971,14 +988,14 @@ export default function CVFormScreen() {
       getFieldValue(field, activeLanguage).trim()
     ) {
       return (
-        <Text style={[styles.fieldNote, styles.fieldNoteSuccess]}>
+        <Text style={[styles.fieldNote, styles.fieldNoteSuccess, languageTextStyle]}>
           {copy.fieldAuto} {`(${getLanguageLabel(field.lastSyncSourceLanguage)})`}
         </Text>
       );
     }
 
     if (field.syncState === 'preserved' && getFieldValue(field, activeLanguage).trim()) {
-      return <Text style={[styles.fieldNote, styles.fieldNoteMuted]}>{copy.fieldPreserved}</Text>;
+      return <Text style={[styles.fieldNote, styles.fieldNoteMuted, languageTextStyle]}>{copy.fieldPreserved}</Text>;
     }
 
     return null;
@@ -1000,8 +1017,8 @@ export default function CVFormScreen() {
     multiline?: boolean;
   }) => (
     <View style={styles.localizedInputBlock}>
-      <View style={styles.inputLabelRow}>
-        <Text style={styles.label}>{label}</Text>
+      <View style={[styles.inputLabelRow, isArabic ? styles.rowRtl : styles.rowLtr]}>
+        <Text style={[styles.label, languageTextStyle]}>{label}</Text>
         {field.lastEditedLanguage !== activeLanguage && getFieldValue(field, activeLanguage).trim() ? (
           <TouchableOpacity onPress={onPreserve} style={styles.keepChip}>
             <Text style={styles.keepChipText}>{activeLanguage === 'en' ? 'Keep current' : 'احتفظ بالقيمة'}</Text>
@@ -1009,7 +1026,7 @@ export default function CVFormScreen() {
         ) : null}
       </View>
       <TextInput
-        style={[styles.input, multiline && styles.textArea, activeLanguage === 'en' && styles.inputLtr]}
+        style={[styles.input, multiline && styles.textArea, languageInputStyle]}
         value={getFieldValue(field, activeLanguage)}
         onChangeText={onChangeText}
         multiline={multiline}
@@ -1028,11 +1045,11 @@ export default function CVFormScreen() {
   ) => (
     <View style={styles.sectionHeader}>
       <TouchableOpacity style={styles.headerTitleContainer} onPress={onToggle}>
-        <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={24} color="#0c2a20" />
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Icon name={isExpanded ? 'expand-less' : 'expand-more'} size={24} color={COLORS.greenDark} />
+        <Text style={[styles.sectionTitle, languageTextStyle]}>{title}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={onAdd} style={styles.addButton}>
-        <Icon name="add" size={20} color="#fff" />
+        <Icon name="add" size={20} color={COLORS.white} />
         <Text style={styles.addButtonText}>{copy.addButton}</Text>
       </TouchableOpacity>
     </View>
@@ -1078,12 +1095,12 @@ export default function CVFormScreen() {
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.pageDescription, activeLanguage === 'en' && styles.textLeft]}>
+        <Text style={[styles.pageDescription, languageTextStyle]}>
           {copy.pageDescription}
         </Text>
 
         <View style={styles.card}>
-          <Text style={styles.label}>{copy.languageLabel}</Text>
+          <Text style={[styles.label, languageTextStyle]}>{copy.languageLabel}</Text>
           <View style={styles.languageOptions}>
             <TouchableOpacity
               style={[styles.languageOption, draft.editingLanguage === 'ar' && styles.languageOptionActive]}
@@ -1117,17 +1134,17 @@ export default function CVFormScreen() {
               <Text style={styles.languageOptionText}>{copy.languageOptionEnglishText}</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.helperText}>{copy.languageHelper}</Text>
+          <Text style={[styles.helperText, languageTextStyle]}>{copy.languageHelper}</Text>
 
           {__DEV__ && (
             <View style={styles.sampleModeRow}>
-              <Text style={styles.helperText}>{copy.sampleModeHint}</Text>
+              <Text style={[styles.helperText, languageTextStyle]}>{copy.sampleModeHint}</Text>
               <TouchableOpacity
                 style={[styles.sampleModeButton, busyStage !== null && styles.disabledBtn]}
                 onPress={handleLoadSampleDraft}
                 disabled={busyStage !== null}
               >
-                <Icon name="science" size={18} color="#0c2a20" />
+                <Icon name="science" size={18} color={COLORS.greenDark} />
                 <Text style={styles.sampleModeButtonText}>{copy.sampleModeButton}</Text>
               </TouchableOpacity>
             </View>
@@ -1135,7 +1152,7 @@ export default function CVFormScreen() {
 
           {draft.editingLanguage === 'en' && pairAvailability?.message && !pairAvailability.supported && (
             <View style={[styles.inlineNotice, styles.inlineNoticeError]}>
-              <Text style={styles.inlineNoticeText}>{pairAvailability.message}</Text>
+              <Text style={[styles.inlineNoticeText, languageTextStyle]}>{pairAvailability.message}</Text>
             </View>
           )}
         </View>
@@ -1148,11 +1165,11 @@ export default function CVFormScreen() {
             onChangeText: value => updateRootField('fullName', value),
             onPreserve: () => preserveVisibleField('root', null, 'fullName'),
           })}
-          <Text style={styles.helperText}>{copy.sectionHint}</Text>
+          <Text style={[styles.helperText, languageTextStyle]}>{copy.sectionHint}</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={[styles.sectionTitleStandalone, activeLanguage === 'en' && styles.textLeft]}>
+          <Text style={[styles.sectionTitleStandalone, languageTextStyle]}>
             {copy.contactTitle}
           </Text>
           {renderLocalizedInput({
@@ -1209,11 +1226,11 @@ export default function CVFormScreen() {
             draft.experiences.map((item, index) => (
               <View key={item.id} style={styles.itemBox}>
                 <View style={styles.itemHeader}>
-                  <Text style={styles.itemTitle}>
+                  <Text style={[styles.itemTitle, languageTextStyle]}>
                     {copy.experiencesTitle} {index + 1}
                   </Text>
                   <TouchableOpacity onPress={() => removeExperience(item.id)}>
-                    <Icon name="delete" size={20} color="#d9534f" />
+                    <Icon name="delete" size={20} color={COLORS.danger} />
                   </TouchableOpacity>
                 </View>
                 {renderLocalizedInput({
@@ -1255,11 +1272,11 @@ export default function CVFormScreen() {
             draft.education.map((item, index) => (
               <View key={item.id} style={styles.itemBox}>
                 <View style={styles.itemHeader}>
-                  <Text style={styles.itemTitle}>
+                  <Text style={[styles.itemTitle, languageTextStyle]}>
                     {copy.educationTitle} {index + 1}
                   </Text>
                   <TouchableOpacity onPress={() => removeEducation(item.id)}>
-                    <Icon name="delete" size={20} color="#d9534f" />
+                    <Icon name="delete" size={20} color={COLORS.danger} />
                   </TouchableOpacity>
                 </View>
                 {renderLocalizedInput({
@@ -1302,7 +1319,7 @@ export default function CVFormScreen() {
                   })}
                 </View>
                 <TouchableOpacity onPress={() => removeSkill(item.id)}>
-                  <Icon name="delete" size={24} color="#d9534f" />
+                  <Icon name="delete" size={24} color={COLORS.danger} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -1319,11 +1336,11 @@ export default function CVFormScreen() {
             draft.certifications.map((item, index) => (
               <View key={item.id} style={styles.itemBox}>
                 <View style={styles.itemHeader}>
-                  <Text style={styles.itemTitle}>
+                  <Text style={[styles.itemTitle, languageTextStyle]}>
                     {copy.certificationsTitle} {index + 1}
                   </Text>
                   <TouchableOpacity onPress={() => removeCertification(item.id)}>
-                    <Icon name="delete" size={20} color="#d9534f" />
+                    <Icon name="delete" size={20} color={COLORS.danger} />
                   </TouchableOpacity>
                 </View>
                 {renderLocalizedInput({
@@ -1370,11 +1387,11 @@ export default function CVFormScreen() {
             draft.volunteerExperiences.map((item, index) => (
               <View key={item.id} style={styles.itemBox}>
                 <View style={styles.itemHeader}>
-                  <Text style={styles.itemTitle}>
+                  <Text style={[styles.itemTitle, languageTextStyle]}>
                     {copy.volunteerTitle} {index + 1}
                   </Text>
                   <TouchableOpacity onPress={() => removeVolunteerExperience(item.id)}>
-                    <Icon name="delete" size={20} color="#d9534f" />
+                    <Icon name="delete" size={20} color={COLORS.danger} />
                   </TouchableOpacity>
                 </View>
                 {renderLocalizedInput({
@@ -1412,15 +1429,15 @@ export default function CVFormScreen() {
 
         {artifact && (
           <View style={[styles.feedbackCard, styles.successCard]}>
-            <Text style={styles.feedbackTitle}>{copy.successReadyTitle}</Text>
-            <Text style={styles.feedbackText}>
+            <Text style={[styles.feedbackTitle, languageTextStyle]}>{copy.successReadyTitle}</Text>
+            <Text style={[styles.feedbackText, languageTextStyle]}>
               {activeLanguage === 'en' ? 'File language' : 'لغة الملف'}: {generatedLanguageLabel}
             </Text>
-            <Text style={styles.feedbackText}>
+            <Text style={[styles.feedbackText, languageTextStyle]}>
               {activeLanguage === 'en' ? 'File name' : 'اسم الملف'}: {artifact.fileName}.pdf
             </Text>
             {savedLocation && (
-              <Text style={styles.feedbackText}>
+              <Text style={[styles.feedbackText, languageTextStyle]}>
                 {copy.savedLocationTitle}: {savedLocation}
               </Text>
             )}
@@ -1429,7 +1446,7 @@ export default function CVFormScreen() {
 
         {busyStage === 'export' && activeExportAction && (
           <View style={[styles.feedbackCard, styles.progressCard]}>
-            <Text style={styles.feedbackTitle}>{exportProgressMessage}</Text>
+            <Text style={[styles.feedbackTitle, languageTextStyle]}>{exportProgressMessage}</Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${exportProgress}%` }]} />
             </View>
@@ -1438,22 +1455,22 @@ export default function CVFormScreen() {
 
         {statusMessage && (
           <View style={[styles.feedbackCard, styles.successCard]}>
-            <Text style={styles.feedbackTitle}>{copy.statusTitle}</Text>
-            <Text style={styles.feedbackText}>{statusMessage}</Text>
+            <Text style={[styles.feedbackTitle, languageTextStyle]}>{copy.statusTitle}</Text>
+            <Text style={[styles.feedbackText, languageTextStyle]}>{statusMessage}</Text>
           </View>
         )}
 
         {savedLocation && (
           <View style={[styles.feedbackCard, styles.successCard]}>
-            <Text style={styles.feedbackTitle}>{copy.savedLocationTitle}</Text>
-            <Text style={styles.feedbackText}>{savedLocation}</Text>
+            <Text style={[styles.feedbackTitle, languageTextStyle]}>{copy.savedLocationTitle}</Text>
+            <Text style={[styles.feedbackText, languageTextStyle]}>{savedLocation}</Text>
           </View>
         )}
 
         {operationError && (
           <View style={[styles.feedbackCard, styles.errorCard]}>
-            <Text style={styles.feedbackTitle}>{copy.errorTitle}</Text>
-            <Text style={styles.feedbackText}>{operationError.message}</Text>
+            <Text style={[styles.feedbackTitle, languageTextStyle]}>{copy.errorTitle}</Text>
+            <Text style={[styles.feedbackText, languageTextStyle]}>{operationError.message}</Text>
             {operationError.retryable && (
               <TouchableOpacity style={styles.retryBtn} onPress={handleRetry} disabled={busyStage !== null}>
                 <Text style={styles.retryBtnText}>{copy.retryButton}</Text>
@@ -1532,27 +1549,27 @@ export default function CVFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff1e2' },
+  container: { flex: 1, backgroundColor: COLORS.sand },
   scrollContent: { padding: 16, paddingBottom: 40 },
   centerState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff1e2',
+    backgroundColor: COLORS.sand,
     paddingHorizontal: 24,
     gap: 12,
   },
   stateTitle: {
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 16,
-    color: '#0c2a20',
+    color: COLORS.greenDark,
     textAlign: 'center',
     writingDirection: 'rtl',
   },
   stateText: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 13,
-    color: '#666',
+    color: COLORS.muted,
     textAlign: 'center',
     writingDirection: 'rtl',
     lineHeight: 22,
@@ -1560,47 +1577,55 @@ const styles = StyleSheet.create({
   pageDescription: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 13,
-    color: '#666',
+    color: COLORS.muted,
     marginBottom: 16,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: 'auto',
     lineHeight: 22,
   },
-  textLeft: {
-    textAlign: 'left',
+  textArabic: {
+    textAlign: 'auto',
+    writingDirection: 'rtl',
+    direction: 'rtl',
+  },
+  textEnglish: {
+    textAlign: 'auto',
     writingDirection: 'ltr',
+    direction: 'ltr',
   },
   card: {
-    backgroundColor: '#eceadf',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 22,
+    padding: 18,
     marginBottom: 16,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 5,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
   },
   languageOptions: { flexDirection: 'row-reverse', gap: 10, marginBottom: 12 },
   languageOption: {
     flex: 1,
-    backgroundColor: '#f7f5ef',
-    borderRadius: 10,
+    backgroundColor: COLORS.cream,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#d3cec3',
+    borderColor: COLORS.border,
     padding: 12,
   },
-  languageOptionActive: { borderColor: '#0c2a20', backgroundColor: '#e5efe9' },
+  languageOptionActive: { borderColor: COLORS.green, backgroundColor: COLORS.sage },
   languageOptionTitle: {
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 14,
-    color: '#0c2a20',
+    color: COLORS.greenDark,
     textAlign: 'center',
   },
-  languageOptionTitleActive: { color: '#0f4f30' },
+  languageOptionTitleActive: { color: COLORS.green },
   languageOptionText: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 11,
-    color: '#5f6b65',
+    color: COLORS.muted,
     marginTop: 6,
     textAlign: 'center',
     writingDirection: 'rtl',
@@ -1615,15 +1640,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#f7f5ef',
-    borderRadius: 8,
+    backgroundColor: COLORS.cream,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#cbae82',
+    borderColor: COLORS.gold,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   sampleModeButtonText: {
-    color: '#0c2a20',
+    color: COLORS.greenDark,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 12,
   },
@@ -1645,57 +1670,66 @@ const styles = StyleSheet.create({
   },
   localizedInputBlock: { marginBottom: 10 },
   inputLabelRow: {
-    flexDirection: 'row-reverse',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
     gap: 8,
   },
+  rowRtl: {
+    flexDirection: 'row-reverse',
+  },
+  rowLtr: {
+    flexDirection: 'row',
+  },
   label: {
+    flex: 1,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 14,
-    color: '#0c2a20',
-    writingDirection: 'rtl',
-    textAlign: 'right',
+    color: COLORS.greenDark,
   },
   keepChip: {
-    backgroundColor: '#f7f5ef',
+    backgroundColor: COLORS.cream,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: '#cbae82',
+    borderColor: COLORS.gold,
   },
   keepChipText: {
-    color: '#0c2a20',
+    color: COLORS.greenDark,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 11,
   },
   helperText: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 11,
-    color: '#6b7280',
+    color: COLORS.muted,
     lineHeight: 18,
     textAlign: 'right',
     writingDirection: 'rtl',
   },
   input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 14,
-    color: '#333',
+    color: COLORS.ink,
     marginBottom: 6,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: 'auto',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
   },
-  inputLtr: {
-    textAlign: 'left',
+  inputArabic: {
+    textAlign: 'auto',
+    writingDirection: 'rtl',
+    direction: 'rtl',
+  },
+  inputEnglish: {
+    textAlign: 'auto',
     writingDirection: 'ltr',
+    direction: 'ltr',
   },
   textArea: { height: 90, textAlignVertical: 'top' },
   fieldNote: {
@@ -1705,7 +1739,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   fieldNoteSuccess: { color: '#1f6e43', textAlign: 'right', writingDirection: 'rtl' },
-  fieldNoteMuted: { color: '#5f6b65', textAlign: 'right', writingDirection: 'rtl' },
+  fieldNoteMuted: { color: COLORS.muted, textAlign: 'right', writingDirection: 'rtl' },
   fieldNoteError: { color: '#a33434', textAlign: 'right', writingDirection: 'rtl' },
   sectionHeader: {
     flexDirection: 'row-reverse',
@@ -1714,11 +1748,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerTitleContainer: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  sectionTitle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, color: '#0c2a20' },
+  sectionTitle: {
+    flex: 1,
+    fontFamily: 'NotoKufiArabic-Bold',
+    fontSize: 16,
+    color: COLORS.greenDark,
+    writingDirection: 'rtl',
+    textAlign: 'right',
+  },
   sectionTitleStandalone: {
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 16,
-    color: '#0c2a20',
+    color: COLORS.greenDark,
     marginBottom: 12,
     textAlign: 'right',
     writingDirection: 'rtl',
@@ -1726,20 +1767,20 @@ const styles = StyleSheet.create({
   addButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    backgroundColor: '#0f4f30',
-    borderRadius: 6,
+    backgroundColor: COLORS.green,
+    borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
     gap: 4,
   },
-  addButtonText: { color: '#fff', fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 },
+  addButtonText: { color: COLORS.white, fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 },
   itemBox: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
+    backgroundColor: COLORS.cream,
+    borderRadius: 18,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e1e1e1',
+    borderColor: COLORS.border,
   },
   itemHeader: {
     flexDirection: 'row-reverse',
@@ -1747,7 +1788,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  itemTitle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 13, color: '#444' },
+  itemTitle: {
+    flex: 1,
+    fontFamily: 'NotoKufiArabic-Bold',
+    fontSize: 13,
+    color: COLORS.greenDark,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
   skillBox: {
     flexDirection: 'row-reverse',
     alignItems: 'flex-start',
@@ -1758,11 +1806,11 @@ const styles = StyleSheet.create({
   feedbackCard: { borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1 },
   successCard: { backgroundColor: '#f4f8f3', borderColor: '#a9c8a9' },
   errorCard: { backgroundColor: '#fff4f4', borderColor: '#f1b2b2' },
-  progressCard: { backgroundColor: '#f7f5ef', borderColor: '#cbae82' },
+  progressCard: { backgroundColor: COLORS.cream, borderColor: COLORS.gold },
   feedbackTitle: {
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 14,
-    color: '#0c2a20',
+    color: COLORS.greenDark,
     marginBottom: 6,
     textAlign: 'right',
     writingDirection: 'rtl',
@@ -1770,7 +1818,7 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 12,
-    color: '#444',
+    color: COLORS.ink,
     lineHeight: 20,
     textAlign: 'right',
     writingDirection: 'rtl',
@@ -1785,51 +1833,51 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: '#0f4f30',
+    backgroundColor: COLORS.green,
   },
   retryBtn: {
     alignSelf: 'flex-end',
-    backgroundColor: '#0c2a20',
-    borderRadius: 8,
+    backgroundColor: COLORS.greenDark,
+    borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginTop: 10,
   },
-  retryBtnText: { color: '#fff', fontFamily: 'NotoKufiArabic-Bold', fontSize: 13 },
+  retryBtnText: { color: COLORS.white, fontFamily: 'NotoKufiArabic-Bold', fontSize: 13 },
   footer: {
     padding: 16,
-    backgroundColor: '#fff1e2',
+    backgroundColor: COLORS.sand,
     borderTopWidth: 1,
-    borderTopColor: '#e0dcd3',
+    borderTopColor: COLORS.border,
     gap: 10,
   },
   exportActionsRow: {
     gap: 10,
   },
   generateBtn: {
-    backgroundColor: '#0c2a20',
+    backgroundColor: COLORS.greenDark,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 999,
     flexDirection: 'row-reverse',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
   secondaryFooterBtn: {
-    backgroundColor: '#eceadf',
+    backgroundColor: COLORS.white,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 999,
     flexDirection: 'row-reverse',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: '#cbae82',
+    borderColor: COLORS.gold,
   },
   exportActionBtn: {
     width: '100%',
   },
-  secondaryFooterBtnText: { color: '#0c2a20', fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
+  secondaryFooterBtnText: { color: COLORS.greenDark, fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
   buttonProgressWrap: {
     width: '100%',
     alignItems: 'center',
@@ -1845,12 +1893,12 @@ const styles = StyleSheet.create({
   buttonProgressFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: '#0f4f30',
+    backgroundColor: COLORS.green,
   },
   btnIcon: { transform: [{ scaleX: -1 }] },
   secondaryBtnIcon: { transform: [{ scaleX: -1 }] },
-  generateBtnText: { color: '#cbae82', fontFamily: 'NotoKufiArabic-Bold', fontSize: 16 },
-  secondaryBtn: { backgroundColor: '#0c2a20', borderRadius: 8, paddingHorizontal: 18, paddingVertical: 12 },
-  secondaryBtnText: { color: '#eceadf', fontFamily: 'NotoKufiArabic-Bold', fontSize: 14 },
+  generateBtnText: { color: COLORS.gold, fontFamily: 'NotoKufiArabic-Bold', fontSize: 16 },
+  secondaryBtn: { backgroundColor: COLORS.greenDark, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 12 },
+  secondaryBtnText: { color: COLORS.white, fontFamily: 'NotoKufiArabic-Bold', fontSize: 14 },
   disabledBtn: { opacity: 0.7 },
 });
