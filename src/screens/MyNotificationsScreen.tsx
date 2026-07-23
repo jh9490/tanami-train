@@ -6,6 +6,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 type InboxItem = {
   id: number | string;
@@ -123,15 +125,15 @@ export default function MyNotificationsScreen({ navigation }: any) {
 
   if (!isAuthenticated) {
     return (
-      <View style={s.container}>
+      <ThemedBackground style={s.container}>
         <Text style={s.msg}>سجّل الدخول لعرض إشعاراتك.</Text>
-      </View>
+      </ThemedBackground>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff1e2', padding: 12 }}>
-      <View style={s.card}>
+    <ThemedBackground style={{ flex: 1, padding: 12 }}>
+      <View style={[s.card, loading && s.loadingCard]}>
         {loading ? (
           <AppLoading style={{ backgroundColor: 'transparent' }} />
         ) : error ? (
@@ -157,7 +159,7 @@ export default function MyNotificationsScreen({ navigation }: any) {
               </TouchableOpacity>
             )}
             ItemSeparatorComponent={() => <View style={s.sep} />}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0f4f30" />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />}
             onEndReachedThreshold={0.35}
             onEndReached={onEndReached}
             ListEmptyComponent={<Text style={s.empty}>لا إشعارات بعد.</Text>}
@@ -176,23 +178,24 @@ export default function MyNotificationsScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </View>
+    </ThemedBackground>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex:1, alignItems:'center', justifyContent:'center', backgroundColor:'#fff1e2' },
-  msg:{ fontFamily:'NotoKufiArabic-Regular', color:'#333' },
-  card: { backgroundColor: '#eceadf', borderRadius: 14, padding: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  container: { flex:1, alignItems:'center', justifyContent:'center' },
+  msg:{ fontFamily:'NotoKufiArabic-Regular', color: colors.cream },
+  card: { backgroundColor: 'rgba(255, 248, 239, 0.12)', borderRadius: 14, padding: 8, borderWidth: 1, borderColor: 'rgba(255, 248, 239, 0.16)', elevation: 2, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  loadingCard: { flex: 1, justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 6 },
-  title: { fontFamily: 'NotoKufiArabic-Bold', color: '#111', fontSize: 14 },
-  preview: { fontFamily: 'NotoKufiArabic-Regular', color: '#555', fontSize: 12, marginTop: 4 },
-  date: { fontFamily: 'NotoKufiArabic-Regular', color: '#888', fontSize: 11, marginHorizontal: 6 },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: '#eee' },
-  empty: { textAlign: 'center', marginTop: 20, fontFamily:'NotoKufiArabic-Regular', color:'#555' },
+  title: { fontFamily: 'NotoKufiArabic-Bold', color: colors.cream, fontSize: 14 },
+  preview: { fontFamily: 'NotoKufiArabic-Regular', color: 'rgba(255, 248, 239, 0.72)', fontSize: 12, marginTop: 4 },
+  date: { fontFamily: 'NotoKufiArabic-Regular', color: 'rgba(255, 248, 239, 0.58)', fontSize: 11, marginHorizontal: 6 },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255, 248, 239, 0.16)' },
+  empty: { textAlign: 'center', marginTop: 20, fontFamily:'NotoKufiArabic-Regular', color:'rgba(255, 248, 239, 0.72)' },
   err: { textAlign:'center', fontFamily:'NotoKufiArabic-Regular', color:'#a00' },
-  retryBtn: { marginTop: 12, alignSelf:'center', backgroundColor:'#0f4f30', paddingHorizontal:16, paddingVertical:10, borderRadius:10 },
-  retryTxt: { color:'#eceadf', fontFamily:'NotoKufiArabic-Bold' },
+  retryBtn: { marginTop: 12, alignSelf:'center', backgroundColor: colors.gold, paddingHorizontal:16, paddingVertical:10, borderRadius:10 },
+  retryTxt: { color: colors.greenDarker, fontFamily:'NotoKufiArabic-Bold' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
   modalCard: { backgroundColor: '#eceadf', borderRadius: 14, padding: 16, width: '86%' },
   modalTitle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, color: '#111', textAlign: 'center' },

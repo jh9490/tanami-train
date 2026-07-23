@@ -1,16 +1,17 @@
 import { Platform, StyleSheet } from 'react-native';
+import { colors } from '../theme/colors';
 
 export const authColors = {
-  background: '#f6efe5',
-  card: '#fffaf4',
-  cardBorder: '#eadfce',
-  surface: '#f2ebdf',
-  primary: '#0f4f30',
-  primarySoft: '#dceee3',
-  text: '#143626',
-  muted: '#5f6f64',
-  hint: '#7f8c84',
-  white: '#ffffff',
+  background: 'transparent',
+  card: 'rgba(255, 248, 239, 0.12)',
+  cardBorder: 'rgba(255, 248, 239, 0.16)',
+  surface: 'rgba(255, 248, 239, 0.12)',
+  primary: colors.green,
+  primarySoft: 'rgba(255, 248, 239, 0.12)',
+  text: colors.cream,
+  muted: 'rgba(255, 248, 239, 0.78)',
+  hint: 'rgba(255, 248, 239, 0.58)',
+  white: colors.white,
 };
 
 export const authStyles = StyleSheet.create({
@@ -32,7 +33,7 @@ export const authStyles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   eyebrow: {
-    color: authColors.primary,
+    color: colors.gold,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 12,
     textAlign: 'left',
@@ -66,7 +67,7 @@ export const authStyles = StyleSheet.create({
     borderWidth: 1,
     padding: 18,
     gap: 12,
-    shadowColor: '#1d2a22',
+    shadowColor: colors.greenDark,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -75,7 +76,7 @@ export const authStyles = StyleSheet.create({
     alignItems: 'stretch',
   },
   sectionTitle: {
-    color: authColors.primary,
+    color: colors.gold,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 14,
     textAlign: 'right',
@@ -97,7 +98,7 @@ export const authStyles = StyleSheet.create({
     borderColor: authColors.cardBorder,
     borderRadius: 16,
     borderWidth: 1,
-    color: authColors.text,
+    color: colors.cream,
     paddingHorizontal: 14,
     paddingVertical: 14,
     textAlign: 'right',
@@ -111,7 +112,7 @@ export const authStyles = StyleSheet.create({
     direction: 'rtl',
   },
   optionTitle: {
-    color: authColors.primary,
+    color: colors.gold,
     fontFamily: 'NotoKufiArabic-Bold',
     textAlign: 'right',
     writingDirection: 'rtl',
@@ -129,10 +130,10 @@ export const authStyles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: authColors.primary,
+    backgroundColor: colors.gold,
     borderRadius: 16,
     paddingVertical: 15,
-    shadowColor: '#0f4f30',
+    shadowColor: colors.green,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.16,
     shadowRadius: 16,
@@ -140,7 +141,7 @@ export const authStyles = StyleSheet.create({
     direction: 'rtl',
   },
   primaryButtonText: {
-    color: authColors.white,
+    color: colors.greenDarker,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 15,
   },
@@ -155,7 +156,7 @@ export const authStyles = StyleSheet.create({
     alignItems: 'center',
   },
   actionLinkText: {
-    color: authColors.primary,
+    color: colors.gold,
     fontFamily: 'NotoKufiArabic-Regular',
     textAlign: 'center',
     writingDirection: 'rtl',
@@ -174,7 +175,7 @@ export const authStyles = StyleSheet.create({
     paddingVertical: 6,
   },
   pillText: {
-    color: authColors.primary,
+    color: colors.gold,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 12,
     textAlign: 'center',

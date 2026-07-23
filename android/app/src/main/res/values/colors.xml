@@ -1,6 +1,9 @@
 <resources>
-    <!-- add if missing -->
-    <color name="notification_color">#0F4F30</color>
-    <color name="tanami_text_primary">#0f4f30</color>
-    <color name="tanami_hint">#988561</color>
+    <color name="tanami_green_dark">#0c2a20</color>
+    <color name="tanami_green">#0f4f30</color>
+    <color name="tanami_gold">#cbae82</color>
+    <color name="tanami_sand">#fff1e2</color>
+    <color name="tanami_hint">#7f8c84</color>
+    <color name="notification_color">@color/tanami_green</color>
+    <color name="tanami_text_primary">@color/tanami_green</color>
 </resources>

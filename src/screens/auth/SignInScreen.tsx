@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { digitsOnly, stripLeadingZero, buildE164 } from '../../util/phone';
 import FlagIcon from '../../util/FlagIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedBackground from '../components/ThemedBackground';
 
 type Country = { code: string; name: string; dial: string };
 
@@ -74,8 +75,8 @@ function CountryCodePicker({
           gap: 8,
         }}
       >
-        <Text style={{ color: authColors.primary, marginRight: 2 }}>▾</Text>
-        <Text style={{ fontFamily: 'NotoKufiArabic-Bold', color: authColors.primary }}>
+        <Text style={{ color: authColors.hint, marginRight: 2 }}>▾</Text>
+        <Text style={{ fontFamily: 'NotoKufiArabic-Bold', color: authColors.text }}>
           +{value.dial}
         </Text>
         <FlagIcon iso={value.code} size={18} />
@@ -101,7 +102,7 @@ function CountryCodePicker({
             style={{
               textAlign: 'center',
               fontFamily: 'NotoKufiArabic-Bold',
-              color: authColors.primary,
+              color: authColors.text,
               marginBottom: 8,
               fontSize: 16,
             }}
@@ -132,7 +133,7 @@ function CountryCodePicker({
                     <Text
                       style={{
                         fontFamily: 'NotoKufiArabic-Regular',
-                        color: authColors.primary,
+                        color: authColors.text,
                         marginRight: 8,
                       }}
                     >
@@ -142,7 +143,7 @@ function CountryCodePicker({
                   <Text
                     style={{
                       fontFamily: 'NotoKufiArabic-Bold',
-                      color: authColors.primary,
+                      color: authColors.text,
                     }}
                   >
                     +{item.dial}
@@ -155,7 +156,7 @@ function CountryCodePicker({
             onPress={() => setOpen(false)}
             style={{ marginTop: 10, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16 }}
           >
-            <Text style={{ color: authColors.primary, fontFamily: 'NotoKufiArabic-Regular' }}>
+            <Text style={{ color: authColors.text, fontFamily: 'NotoKufiArabic-Regular' }}>
               إغلاق
             </Text>
           </TouchableOpacity>
@@ -208,10 +209,11 @@ const SignInScreen: React.FC<any> = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={authStyles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <ThemedBackground>
+      <KeyboardAvoidingView
+        style={authStyles.screen}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         contentContainerStyle={[authStyles.scrollContent, { paddingBottom: 72 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -282,7 +284,8 @@ const SignInScreen: React.FC<any> = ({ navigation }) => {
           <Text style={authStyles.subtleLinkText}>نسيت كلمة المرور؟</Text>
         </TouchableOpacity>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </ThemedBackground>
   );
 };
 

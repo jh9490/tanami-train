@@ -24,6 +24,8 @@ import { openLinkSafe } from '../util/Linker';
 import PlaceholderPoster from './components/PlaceholderPoster';
 import CourseDialog, { CourseLite } from './components/CourseDialog';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors as themeColors } from '../theme/colors';
 
 I18nManager.forceRTL(true);
 
@@ -88,7 +90,6 @@ const HOME_EXTERNAL_LINKS: HomeExternalLink[] = [
 
 const Screen = styled.View`
   flex: 1;
-  background-color: ${COLORS.sand};
 `;
 
 const HomeSection = styled.View`
@@ -108,7 +109,7 @@ const SlideTouchable = styled.TouchableOpacity<{ h: number }>`
   width: 100%;
   height: ${({ h }) => h}px;
   overflow: hidden;
-  background-color: #e9e7e0;
+  background-color: transparent;
 `;
 
 const SlideBg = styled(ImageBackground)<{ h: number }>`
@@ -135,22 +136,22 @@ const HeroDot = styled.View<{ active: boolean }>`
 
 const AuthCard = styled.View`
   margin: 14px ${PAGE_PADDING}px 4px;
-  background: ${COLORS.white};
+  background: rgba(255, 248, 239, 0.12);
   border-radius: 24px;
   padding: 18px;
   border-width: 1px;
-  border-color: ${COLORS.border};
+  border-color: rgba(255, 248, 239, 0.16);
   shadow-color: #000;
-  shadow-opacity: 0.04;
-  shadow-radius: 10px;
-  shadow-offset: 0px 2px;
-  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 14px;
+  shadow-offset: 0px 6px;
+  elevation: 4;
 `;
 
 const AuthTitle = styled.Text`
   font-size: 18px;
   line-height: 28px;
-  color: ${COLORS.green};
+  color: ${themeColors.cream};
   font-family: 'NotoKufiArabic-Bold';
   text-align: center;
 `;
@@ -158,15 +159,17 @@ const AuthTitle = styled.Text`
 const AuthSubtitle = styled.Text`
   font-size: 12px;
   line-height: 20px;
-  color: ${COLORS.muted};
+  color: rgba(255, 248, 239, 0.78);
   text-align: center;
   margin-top: 4px;
   font-family: 'NotoKufiArabic-Regular';
 `;
 
 const GridItemWrap = styled.TouchableOpacity`
-  background-color: ${COLORS.tile};
+  background-color: rgba(255, 248, 239, 0.12);
   border-radius: 15px;
+  border-width: 1px;
+  border-color: rgba(255, 248, 239, 0.14);
   min-height: 92px;
   padding-vertical: 12px;
   align-items: center;
@@ -177,13 +180,13 @@ const GridItemWrap = styled.TouchableOpacity`
 
 const GridItemLabel = styled.Text`
   margin-top: 8px;
-  color: ${COLORS.greenDark};
+  color: rgba(255, 248, 239, 0.88);
   font-family: 'NotoKufiArabic-Bold';
   font-size: 12px;
 `;
 
 const PrimaryBtn = styled.TouchableOpacity`
-  background: ${COLORS.green};
+  background: ${themeColors.gold};
   padding: 11px 18px;
   border-radius: 999px;
   min-width: 142px;
@@ -191,7 +194,7 @@ const PrimaryBtn = styled.TouchableOpacity`
 `;
 
 const PrimaryText = styled.Text`
-  color: ${COLORS.white};
+  color: ${themeColors.greenDarker};
   font-size: 13px;
   font-family: 'NotoKufiArabic-Bold';
 `;
@@ -203,7 +206,7 @@ const CoursesHeader = styled.View`
 const SectionTitle = styled.Text`
   font-size: 19px;
   line-height: 30px;
-  color: ${COLORS.ink};
+  color: ${themeColors.cream};
   font-family: 'NotoKufiArabic-Bold';
   text-align: center;
   writing-direction: rtl;
@@ -223,7 +226,7 @@ const RadarStaticRow = styled.View`
 
 const EmptyCoursesText = styled.Text`
   text-align: center;
-  color: #333;
+  color: rgba(255, 248, 239, 0.78);
   margin-top: 10px;
   padding: 0 ${PAGE_PADDING}px;
   font-family: 'NotoKufiArabic-Regular';
@@ -289,7 +292,7 @@ const SocialSection = styled.View`
 const SocialTitle = styled.Text`
   font-size: 16px;
   font-family: 'NotoKufiArabic-Regular';
-  color: #0f4f30;
+  color: rgba(255, 248, 239, 0.82);
   margin-bottom: 12px;
 `;
 
@@ -304,7 +307,9 @@ const SocialIcon = styled.TouchableOpacity`
   width: 48px;
   height: 48px;
   border-radius: 24px;
-  background-color: #0f4f30;
+  background-color: rgba(255, 248, 239, 0.12);
+  border-width: 1px;
+  border-color: rgba(255, 248, 239, 0.16);
   justify-content: center;
   align-items: center;
   margin: 6px 8px;
@@ -314,7 +319,7 @@ const toAbs = (rel?: string | null) => (rel ? `${BASE}${rel}` : undefined);
 
 const HomeGridItem = ({ icon, label, onPress }: HomeGridItemProps) => (
   <GridItemWrap onPress={onPress} activeOpacity={0.8}>
-    <MaterialIcon name={icon} size={24} color={COLORS.green} />
+    <MaterialIcon name={icon} size={24} color={themeColors.gold} />
     <GridItemLabel>{label}</GridItemLabel>
   </GridItemWrap>
 );
@@ -509,9 +514,9 @@ export default function HomeScreen() {
       </View>
       <View style={{ flexDirection: 'row' }}>
         <HomeGridItem
-          icon="how-to-reg"
-          label="طلبات التسجيل"
-          onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+          icon="live-tv"
+          label="احضر أونلاين"
+          onPress={() => navigation.navigate('UserStack', { screen: 'OnlineCourses' })}
         />
         <HomeGridItem
           icon="verified"
@@ -563,7 +568,7 @@ export default function HomeScreen() {
           style={{
             marginTop: 12,
             fontSize: 13,
-            color: COLORS.green,
+            color: themeColors.gold,
             fontFamily: 'NotoKufiArabic-Bold',
             textAlign: 'center',
             textDecorationLine: 'underline',
@@ -690,7 +695,7 @@ export default function HomeScreen() {
             accessibilityLabel={link.label}
             onPress={() => openLinkSafe(link.url)}
           >
-            <Icon name={link.iconName} size={24} color="#eceadf" />
+            <Icon name={link.iconName} size={24} color={themeColors.gold} />
           </SocialIcon>
         ))}
       </IconRow>
@@ -699,26 +704,36 @@ export default function HomeScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Screen>
-        <ScrollView
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={{ paddingBottom: 32 }}
-        >
-          {renderHeroSlider()}
+      <ThemedBackground>
+        <Screen>
+          <ScrollView
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={themeColors.gold}
+                colors={[themeColors.gold]}
+              />
+            }
+            contentContainerStyle={{ paddingBottom: 32 }}
+            style={{ zIndex: 1 }}
+          >
+            {renderHeroSlider()}
 
-          {renderAuthSection()}
+            {renderAuthSection()}
 
-          <HomeSection>
-            <CoursesHeader>
-              <SectionTitle>يحدث في تنامي</SectionTitle>
-            </CoursesHeader>
-            {renderHappeningSection()}
-          </HomeSection>
-          {renderFooterSocial()}
-        </ScrollView>
+            <HomeSection>
+              <CoursesHeader>
+                <SectionTitle>يحدث في تنامي</SectionTitle>
+              </CoursesHeader>
+              {renderHappeningSection()}
+            </HomeSection>
+            {renderFooterSocial()}
+          </ScrollView>
 
-        {loading ? <AppLoading overlay /> : null}
-      </Screen>
+          {loading ? <AppLoading overlay /> : null}
+        </Screen>
+      </ThemedBackground>
 
       <CourseDialog
         visible={detailsOpen}

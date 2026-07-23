@@ -3,6 +3,7 @@ import { Image } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import styled from 'styled-components/native';
 import LinearGradient from 'react-native-linear-gradient';
+import { colors, gradients } from '../theme/colors';
 
 const LOGO = require('../../logo2.png');
 
@@ -12,7 +13,7 @@ const Container = styled(LinearGradient)`
   flex: 1;
   align-items: center;
   justify-content: center;
-  background-color: #0c2a20;
+  background-color: ${colors.greenDark};
 `;
 
 const AmbientCircle = styled(Animatable.View)<{
@@ -65,7 +66,7 @@ const LogoImage = styled(Image)`
 
 const Tagline = styled(Animatable.Text)`
   margin-top: 24px;
-  color: #fff8ef;
+  color: ${colors.cream};
   font-family: 'NotoKufiArabic-Bold';
   font-size: 19px;
   line-height: 30px;
@@ -87,7 +88,7 @@ const GoldPath = styled(Animatable.View)`
   width: 96px;
   height: 4px;
   border-radius: 999px;
-  background-color: #cbae82;
+  background-color: ${colors.gold};
   margin-top: 20px;
 `;
 
@@ -124,7 +125,7 @@ const MiniCardText = styled.Text`
 
 const OnePlaceText = styled(Animatable.Text)`
   margin-top: 12px;
-  color: #cbae82;
+  color: ${colors.gold};
   font-family: 'NotoKufiArabic-Bold';
   font-size: 15px;
   line-height: 24px;
@@ -139,7 +140,7 @@ export default function SplashScreen({ onDone }: Props) {
   }, [onDone]);
 
   return (
-    <Container colors={['#061713', '#0c2a20', '#123d2b']}>
+    <Container colors={gradients.splash}>
       <AmbientCircle size={220} top={-72} right={-58} animation="pulse" iterationCount="infinite" duration={2800} />
       <AmbientCircle size={160} bottom={92} left={-70} animation="pulse" iterationCount="infinite" duration={3200} />
 

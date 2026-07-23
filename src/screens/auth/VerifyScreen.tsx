@@ -23,6 +23,7 @@ import {
 } from '../../auth/otp';
 import { authColors, authStyles } from '../../auth/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedBackground from '../components/ThemedBackground';
 
 const maskMobileForDisplay = (m: string) => {
   if (!m) return '';
@@ -75,10 +76,11 @@ const VerifyScreen: React.FC<any> = ({ route, navigation }) => {
   const title = context === 'signin' ? 'تفعيل الحساب' : 'أدخل رمز التحقق';
 
   return (
-    <KeyboardAvoidingView
-      style={authStyles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <ThemedBackground>
+      <KeyboardAvoidingView
+        style={authStyles.screen}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         contentContainerStyle={[authStyles.scrollContent, { paddingBottom: 72 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -158,7 +160,8 @@ const VerifyScreen: React.FC<any> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </ThemedBackground>
   );
 };
 

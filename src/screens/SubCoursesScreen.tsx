@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { FlatList, Pressable, View, Text, StyleSheet } from 'react-native';
+import { FlatList, Pressable, Text } from 'react-native';
 import styled from 'styled-components/native';
 import { useRoute } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import CourseDialog, { CourseLite } from './components/CourseDialog';
 import { useAuth } from '../context/AuthContext';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 type SubCourse = {
   id: number;
@@ -19,14 +21,13 @@ type RouteParams = {
   subCourses: SubCourse[];
 };
 
-const Container = styled.View`
+const Container = styled(ThemedBackground)`
   flex: 1;
-  background-color: #eceadf;
   padding: 16px;
 `;
 
 const HeaderTitle = styled.Text`
-  color: #0c2a20;
+  color: ${colors.cream};
   font-family: 'NotoKufiArabic-Regular';
   font-size: 18px;
   text-align: center;
@@ -34,8 +35,10 @@ const HeaderTitle = styled.Text`
 `;
 
 const CourseBox = styled.View`
-  background-color: #0c2a20;
+  background-color: rgba(255, 248, 239, 0.12);
   border-radius: 12px;
+  border-width: 1px;
+  border-color: rgba(255, 248, 239, 0.16);
   padding: 12px;
   margin: 8px 0;
 `;
@@ -92,7 +95,7 @@ const SubCoursesScreen: React.FC = () => {
             </Pressable>
           )}
           ListEmptyComponent={
-            <Text style={{ textAlign: 'center', marginTop: 16 }}>لا توجد دورات ضمن هذه الحزمة</Text>
+            <Text style={{ textAlign: 'center', marginTop: 16, color: colors.cream }}>لا توجد دورات ضمن هذه الحزمة</Text>
           }
           contentContainerStyle={{ paddingBottom: 24 }}
         />
@@ -110,9 +113,5 @@ const SubCoursesScreen: React.FC = () => {
     </GestureHandlerRootView>
   );
 };
-
-const styles = StyleSheet.create({
-  // reserved for future screen styles
-});
 
 export default SubCoursesScreen;

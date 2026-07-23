@@ -9,6 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Linking } from 'react-native';
 import { rtlStyles } from '../../theme/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedBackground from '../components/ThemedBackground';
+import { colors } from '../../theme/colors';
 
 type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<MenuStackParamList>,
@@ -30,14 +32,14 @@ const Row = ({
     <Icon
       name={I18nManager.isRTL ? 'chevron-left' : 'chevron-right'}
       size={22}
-      color={danger ? '#d9534f' : '#999'}
+      color={danger ? '#d9534f' : 'rgba(255, 248, 239, 0.58)'}
     />
     <View style={styles.rowMain}>
       <Text style={[styles.rowText, danger && styles.rowTextDanger]}>{title}</Text>
       <Icon
         name={icon}
         size={22}
-        color={danger ? '#d9534f' : '#0f4f30'}
+        color={danger ? '#d9534f' : colors.gold}
         style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
       />
     </View>
@@ -105,7 +107,7 @@ export default function MenuScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ThemedBackground style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 28 }]}
         showsVerticalScrollIndicator={false}
@@ -123,7 +125,7 @@ export default function MenuScreen() {
           <Icon
             name="account-circle"
             size={48}
-            color="#0f4f30"
+            color={colors.gold}
             style={{ transform: I18nManager.isRTL ? [{ scaleX: -1 }] : undefined }}
           />
         </View>
@@ -134,6 +136,13 @@ export default function MenuScreen() {
             icon="verified"
             onPress={() => navigation.navigate('VerifyCertificate')}
           />
+          {isAuthenticated && (
+            <Row
+              title="طلبات التسجيل"
+              icon="how-to-reg"
+              onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+            />
+          )}
           <Row
             title="اتصل بنا"
             icon="support-agent"
@@ -176,12 +185,12 @@ export default function MenuScreen() {
           )}
         </View>
       </ScrollView>
-    </View>
+    </ThemedBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff1e2', direction: 'rtl' },
+  container: { flex: 1, direction: 'rtl' },
   scrollContent: {
     padding: 16,
   },
@@ -189,12 +198,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#eceadf',
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
     borderRadius: 14,
     padding: 12,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 248, 239, 0.16)',
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
@@ -206,25 +217,27 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 16,
-    color: '#111',
+    color: colors.cream,
     textAlign: 'left',
     writingDirection: 'rtl',
   },
   headerSub: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 12,
-    color: '#6b7280',
+    color: 'rgba(255, 248, 239, 0.72)',
     textAlign: 'left',
     writingDirection: 'rtl',
     marginTop: 2,
   },
   card: {
-    backgroundColor: '#eceadf',
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
     borderRadius: 14,
     paddingHorizontal: 8,
     paddingVertical: 4,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 248, 239, 0.16)',
+    shadowOpacity: 0.12,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
@@ -235,7 +248,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: 'rgba(255, 248, 239, 0.16)',
     gap: 12,
   },
   rowMain: {
@@ -248,7 +261,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 16,
-    color: '#111',
+    color: colors.cream,
     textAlign: 'left',
     writingDirection: 'rtl',
   },

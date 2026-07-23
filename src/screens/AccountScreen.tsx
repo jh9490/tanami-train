@@ -10,6 +10,8 @@ import { api } from '../services/api';
 import type { Profile, UpdateProfileBody } from '../types/api';
 import AppLoading from './components/AppLoading';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedBackground from './components/ThemedBackground';
+import { colors as themeColors } from '../theme/colors';
 
 const COLORS = {
   green: '#0f4f30',
@@ -206,11 +208,12 @@ export default function AccountScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: COLORS.sand }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
+    <ThemedBackground>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 40 + kbHeight + insets.bottom }}
@@ -311,7 +314,8 @@ export default function AccountScreen() {
         </View>
       </ScrollView>
       {loading ? <AppLoading overlay text="يتم تحميل بيانات الحساب" /> : null}
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </ThemedBackground>
   );
 }
 
@@ -323,25 +327,25 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
 );
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.sand, padding: 16 },
+  container: { flex: 1, backgroundColor: 'transparent', padding: 16 },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(255, 248, 239, 0.16)',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  title: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 20, lineHeight: 32, color: COLORS.ink, textAlign: 'center' },
+  title: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 20, lineHeight: 32, color: themeColors.cream, textAlign: 'center' },
   subtitle: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 12,
     lineHeight: 20,
-    color: COLORS.muted,
+    color: 'rgba(255, 248, 239, 0.78)',
     textAlign: 'center',
     marginTop: 2,
     marginBottom: 14,
@@ -365,24 +369,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  label: { fontFamily: 'NotoKufiArabic-Bold', color: COLORS.greenDark, fontSize: 13 },
-  value: { fontFamily: 'NotoKufiArabic-Regular', color: COLORS.ink, fontSize: 14 },
+  label: { fontFamily: 'NotoKufiArabic-Bold', color: themeColors.cream, fontSize: 13 },
+  value: { fontFamily: 'NotoKufiArabic-Regular', color: themeColors.cream, fontSize: 14 },
   input: {
-    backgroundColor: COLORS.white,
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: 'rgba(255, 248, 239, 0.16)',
     paddingVertical: 11,
     paddingHorizontal: 14,
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 14,
-    color: COLORS.ink,
+    color: themeColors.cream,
   },
   primaryBtn: {
-    marginTop: 18, backgroundColor: COLORS.green, paddingVertical: 13,
+    marginTop: 18, backgroundColor: themeColors.gold, paddingVertical: 13,
     borderRadius: 999, alignItems: 'center'
   },
-  primaryText: { color: COLORS.white, fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
+  primaryText: { color: themeColors.greenDarker, fontFamily: 'NotoKufiArabic-Bold', fontSize: 15 },
   secondaryBtn: {
     backgroundColor: COLORS.cream, paddingVertical: 12, borderRadius: 999,
     borderWidth: 1, borderColor: COLORS.border, alignItems: 'center'

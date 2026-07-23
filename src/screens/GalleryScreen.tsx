@@ -17,12 +17,13 @@ import ImageViewer from 'react-native-image-zoom-viewer';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../context/AuthContext';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 const screenWidth = Dimensions.get('window').width;
 
-const Container = styled.View`
+const Container = styled(ThemedBackground)`
   flex: 1;
-  background-color: #fff1e2;
   padding: 10px;
 `;
 
@@ -34,7 +35,7 @@ const Row = styled.View`
 `;
 
 const Hint = styled.Text`
-  color: #333;
+  color: rgba(255, 248, 239, 0.82);
   font-size: 12px;
 `;
 
@@ -228,7 +229,7 @@ const GalleryScreen: React.FC = () => {
         keyExtractor={(item) => String(item.id)}
         numColumns={3}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#111" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />
         }
         renderItem={({ item, index }) => {
           const isSaved = bookmarkedIds.has(item.id);
@@ -265,7 +266,7 @@ const GalleryScreen: React.FC = () => {
         }}
         ListEmptyComponent={
           <View style={{ marginTop: 24, alignItems: 'center' }}>
-            <Text style={{ color: '#0f4f30' }}>لا توجد صور حالياً</Text>
+            <Text style={{ color: colors.cream }}>لا توجد صور حالياً</Text>
           </View>
         }
         contentContainerStyle={{ paddingBottom: 12 }}

@@ -3,17 +3,19 @@ import { ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import styled from 'styled-components/native';
 import { WebView } from 'react-native-webview';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 const API_URL = 'http://tanamitrain.com/tanamiAdmin/api/mobile-app/location';
 
-const Container = styled.View` flex: 1; background-color: #eceadf; `;
+const Container = styled(ThemedBackground)` flex: 1; `;
 const LocationText = styled.Text`
   font-size: 16px; font-family: 'NotoKufiArabic-Regular';
-  text-align: center; color: #333; margin: 10px 16px;
+  text-align: center; color: rgba(255, 248, 239, 0.82); margin: 10px 16px;
 `;
 const Row = styled.View` flex-direction: row; justify-content: center; gap: 10px; margin: 10px 16px; `;
-const Btn = styled.TouchableOpacity` background: #ffc546; padding: 10px 14px; border-radius: 10px; `;
-const BtnText = styled.Text` color: #000; font-family: 'NotoKufiArabic-Bold'; `;
+const Btn = styled.TouchableOpacity` background: ${colors.gold}; padding: 10px 14px; border-radius: 10px; `;
+const BtnText = styled.Text` color: ${colors.greenDarker}; font-family: 'NotoKufiArabic-Bold'; `;
 
 type LocationApi = {
   embed_url?: string;
@@ -151,7 +153,7 @@ export default function OurLocationScreen() {
           setSupportMultipleWindows={false}
           javaScriptCanOpenWindowsAutomatically={false}
           startInLoadingState
-          renderLoading={() => <ActivityIndicator size="large" color="#ffc546" style={{ marginTop: 16 }} />}
+          renderLoading={() => <ActivityIndicator size="large" color={colors.gold} style={{ marginTop: 16 }} />}
           onHttpError={() => setFailed(true)}
           onError={() => setFailed(true)}
           onShouldStartLoadWithRequest={handleShouldStart}
@@ -159,7 +161,7 @@ export default function OurLocationScreen() {
         />
       ) : (
         <>
-          <LocationText style={{ marginTop: 12, color: '#0f4f30' }}>
+          <LocationText style={{ marginTop: 12, color: colors.cream }}>
             تعذّر تحميل الخريطة داخل التطبيق.
           </LocationText>
           <Row>

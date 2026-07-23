@@ -25,42 +25,46 @@ import RNFS from 'react-native-fs';
 
 // Your preview component (Arabic/English via lang prop)
 import CertificatePreviewNami from './components/CertificatePreviewNami';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 const API_URL = 'http://tanamitrain.com/tanamiAdmin/api/mobile-app/check-certi';
 
 /* ---------- styled ---------- */
-const Container = styled.View`flex:1;background-color:#fff1e2;`;
+const Container = styled(ThemedBackground)`flex:1;`;
 const ScreenPad = styled.View`padding:16px;`;
 const Hint = styled.Text`
   font-size: 10px;
   font-family: NotoKufiArabic-Bold;
-  color: #0f4f30;
+  color: rgba(255, 248, 239, 0.78);
   text-align: center;
   margin-bottom: 12px;
   opacity: 0.75;
 `;
-const Input = styled.TextInput.attrs({ placeholderTextColor: '#0f4f30' })`
-  background-color: #eceadf;
+const Input = styled.TextInput.attrs({ placeholderTextColor: 'rgba(255, 248, 239, 0.58)' })`
+  background-color: rgba(255, 248, 239, 0.12);
+  border-width: 1px;
+  border-color: rgba(255, 248, 239, 0.16);
   border-radius: 10px;
   padding: 12px;
   margin-bottom: 16px;
   text-align: right;
-  color: #0f4f30;
+  color: ${colors.cream};
   font-weight: bold;
 `;
 const PrimaryButton = styled.TouchableOpacity<{ disabled?: boolean }>`
-  background-color: ${({ disabled }) => (disabled ? '#5a8f78' : '#0f4f30')};
+  background-color: ${({ disabled }) => (disabled ? 'rgba(203, 174, 130, 0.55)' : colors.gold)};
   border-radius: 10px;
   padding: 14px;
   align-items: center;
   justify-content: center;
   margin-top: 8px;
 `;
-const ButtonText = styled.Text`color:#eceadf;font-family:NotoKufiArabic-Bold;font-size:16px;`;
+const ButtonText = styled.Text`color:${colors.greenDarker};font-family:NotoKufiArabic-Bold;font-size:16px;`;
 const Center = styled.View`align-items:center;justify-content:center;margin-top:18px;`;
 const Badge = styled.View<{ color: string }>`background-color:${({color})=>color};border-radius:60px;padding:18px;`;
-const BadgeText = styled.Text`margin-top:10px;font-family:NotoKufiArabic-Bold;color:#0f4f30;font-size:18px;`;
-const Subtle = styled.Text`margin-top:4px;color:#0f4f30;font-size:14px;opacity:.8;`;
+const BadgeText = styled.Text`margin-top:10px;font-family:NotoKufiArabic-Bold;color:${colors.cream};font-size:18px;`;
+const Subtle = styled.Text`margin-top:4px;color:rgba(255, 248, 239, 0.78);font-size:14px;opacity:.8;`;
 
 /* ---------- types ---------- */
 type CertResponse = {
@@ -171,25 +175,6 @@ export default function VerifyCertificateScreen() {
     if (ok) setScanOpen(true);
   }, [requestCameraPermission]);
 
-  const onBarcodeRead = useCallback(
-    (event: { nativeEvent: { codeStringValue: string } }) => {
-      if (handlingScan) return;
-      const value = event.nativeEvent.codeStringValue || '';
-      const serial = parseSerialFromQrPayload(value);
-      if (!serial) {
-        Alert.alert('لم يتم التعرف', 'تعذر استخراج رقم الشهادة من الرمز. جرّب مرة أخرى أو أدخل الرقم يدويًا.');
-        return;
-      }
-      setHandlingScan(true);
-      setScanOpen(false);
-      setCertId(serial);
-      setTimeout(() => {
-        onVerify(serial).finally(() => setHandlingScan(false));
-      }, 100);
-    },
-    [handlingScan]
-  );
-
   const onVerify = useCallback(async (serialOverride?: string) => {
     const serial = (serialOverride ?? certId).trim();
     if (!serial) {
@@ -229,6 +214,25 @@ export default function VerifyCertificateScreen() {
     }
   }, [certId]);
 
+  const onBarcodeRead = useCallback(
+    (event: { nativeEvent: { codeStringValue: string } }) => {
+      if (handlingScan) return;
+      const value = event.nativeEvent.codeStringValue || '';
+      const serial = parseSerialFromQrPayload(value);
+      if (!serial) {
+        Alert.alert('لم يتم التعرف', 'تعذر استخراج رقم الشهادة من الرمز. جرّب مرة أخرى أو أدخل الرقم يدويًا.');
+        return;
+      }
+      setHandlingScan(true);
+      setScanOpen(false);
+      setCertId(serial);
+      setTimeout(() => {
+        onVerify(serial).finally(() => setHandlingScan(false));
+      }, 100);
+    },
+    [handlingScan, onVerify]
+  );
+
   return (
     <Container>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -245,10 +249,10 @@ export default function VerifyCertificateScreen() {
             />
 
             <PrimaryButton onPress={() => onVerify()} disabled={busy}>
-              {busy ? <ActivityIndicator color="#eceadf" /> : <ButtonText>تحقق</ButtonText>}
+              {busy ? <ActivityIndicator color={colors.greenDarker} /> : <ButtonText>تحقق</ButtonText>}
             </PrimaryButton>
 
-            <PrimaryButton onPress={openScanner} disabled={busy} style={{ backgroundColor: '#145a43' }}>
+            <PrimaryButton onPress={openScanner} disabled={busy}>
               <ButtonText>مسح رمز QR</ButtonText>
             </PrimaryButton>
 

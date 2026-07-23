@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "android:emulator": "react-native run-android --active-arch-only --no-packager",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",

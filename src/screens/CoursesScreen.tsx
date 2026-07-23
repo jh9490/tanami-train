@@ -5,36 +5,39 @@ import { Alert, Dimensions, FlatList, I18nManager, RefreshControl } from 'react-
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 I18nManager.forceRTL(true);
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 24;
 
-const Container = styled.View`
+const Container = styled(ThemedBackground)`
   flex: 1;
-  background-color: #eceadf;
   padding: 16px;
 `;
 
 const Card = styled.TouchableOpacity`
-  background-color: #eceadf;
+  background-color: rgba(255, 248, 239, 0.12);
   width: ${CARD_WIDTH}px;
   height: 120px;
   border-radius: 12px;
+  border-width: 1px;
+  border-color: rgba(255, 248, 239, 0.16);
   margin: 8px;
   justify-content: center;
   align-items: center;
 `;
 
 const CardIcon = styled(Icon)`
-  color: #0f4f30;
+  color: ${colors.gold};
   font-size: 28px;
   margin-bottom: 8px;
 `;
 
 const CardLabel = styled.Text`
-  color: #0f4f30;
+  color: rgba(255, 248, 239, 0.88);
   font-size: 14px;
   text-align: center;
   font-family: 'NotoKufiArabic-Regular';
@@ -162,9 +165,9 @@ const CoursesScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={{ paddingBottom: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#111" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />}
         ListEmptyComponent={
-          <CardLabel style={{ color: '#111', marginTop: 16 }}>لا توجد حزم متاحة حالياً</CardLabel>
+          <CardLabel style={{ marginTop: 16 }}>لا توجد حزم متاحة حالياً</CardLabel>
         }
       />
     </Container>

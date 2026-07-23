@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { CourseItem } from '../types/api';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 type Phase = 'current' | 'upcoming' | 'previous';
 
@@ -82,7 +84,7 @@ export default function MyCoursesScreen({ navigation }: any) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff1e2', padding: 12 }}>
+    <ThemedBackground style={{ flex: 1, padding: 12 }}>
       {/* segmented filter */}
       <View style={styles.segmented}>
         <TabBtn value="current" label="الحالية" />
@@ -139,7 +141,7 @@ export default function MyCoursesScreen({ navigation }: any) {
           />
         )}
       </View>
-    </View>
+    </ThemedBackground>
   );
 }
 const styles = StyleSheet.create({
@@ -147,7 +149,9 @@ const styles = StyleSheet.create({
   segmented: {
     flexDirection: 'row',
     alignSelf: 'center',
-    backgroundColor: '#eee',
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 248, 239, 0.16)',
     borderRadius: 999,
     padding: 4,
     marginBottom: 12,
@@ -158,9 +162,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     marginHorizontal: 2,
   },
-  segBtnActive: { backgroundColor: '#0f4f30' },
-  segText: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 12, color: '#333' },
-  segTextActive: { color: '#eceadf' },
+  segBtnActive: { backgroundColor: colors.gold },
+  segText: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 12, color: 'rgba(255, 248, 239, 0.78)' },
+  segTextActive: { color: colors.greenDarker },
 
   // List wrapper
   listWrap: {
@@ -170,13 +174,13 @@ const styles = StyleSheet.create({
 
   // Course card
   cardItem: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 12,
     marginVertical: 6,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#eceadf',
+    borderColor: 'rgba(255, 248, 239, 0.16)',
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -198,7 +202,7 @@ const styles = StyleSheet.create({
     flex: 1,                           // take remaining width
     flexShrink: 1,                     // allow to shrink instead of pushing out
     fontFamily: 'NotoKufiArabic-Bold',
-    color: '#0f4f30',
+    color: colors.cream,
     fontSize: 15,
   
     lineHeight: 20,
@@ -210,7 +214,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     fontFamily: 'NotoKufiArabic-Regular',
-    color: '#0f4f30',
+    color: colors.gold,
     flexShrink: 0,                     // don't let the link shrink weirdly
     marginStart: 8,
     alignSelf: 'flex-start',           // keep it aligned to top if title wraps
@@ -220,7 +224,7 @@ const styles = StyleSheet.create({
   cardSub: {
     marginTop: 6,
     fontFamily: 'NotoKufiArabic-Regular',
-    color: '#555',
+    color: 'rgba(255, 248, 239, 0.72)',
     fontSize: 12,
     textAlign: 'right',
   },
@@ -229,7 +233,7 @@ const styles = StyleSheet.create({
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: '#eee' },
   empty: {
     textAlign: 'center',
-    color: '#666',
+    color: 'rgba(255, 248, 239, 0.72)',
     fontFamily: 'NotoKufiArabic-Regular',
     paddingVertical: 16,
   },

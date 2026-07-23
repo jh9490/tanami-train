@@ -74,6 +74,8 @@ def enableProguardInReleaseBuilds = false
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+def reactNativeArchitectures = project.findProperty("reactNativeArchitectures")
+def activeArchitectures = reactNativeArchitectures ? reactNativeArchitectures.split(",") : null
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -86,8 +88,8 @@ android {
         applicationId "com.tanamitrain"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 24
-        versionName "1.1.1"
+        versionCode 25
+        versionName "1.1.2"
     }
 
     signingConfigs {
@@ -123,11 +125,16 @@ android {
         }
     }
 
-    // ✅ Produce ONE universal APK that runs on all ABIs
+    // Produce one universal APK by default, but let emulator installs build only
+    // the active ABI when React Native passes -PreactNativeArchitectures.
     splits {
         abi {
-            enable false
-            universalApk true
+            enable activeArchitectures != null
+            reset()
+            if (activeArchitectures != null) {
+                include(*activeArchitectures)
+            }
+            universalApk activeArchitectures == null
         }
     }
 }

@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import type { RootStackParamList } from '../../navigation/AppNavigator';
 import AppLoading from '../components/AppLoading';
+import ThemedBackground from '../components/ThemedBackground';
 import {
   buildDraftForLanguage,
   createBilingualDraftFromDraft,
@@ -1057,17 +1058,19 @@ export default function CVFormScreen() {
 
   if (loading || (isAuthenticated && !isDraftHydrated)) {
     return (
-      <AppLoading
-        text={loading ? 'جارٍ تجهيز بيانات الدخول...' : 'جارٍ استعادة مسودة السيرة الذاتية...'}
-        style={{ paddingBottom: insets.bottom }}
-      />
+      <ThemedBackground>
+        <AppLoading
+          text={loading ? 'جارٍ تجهيز بيانات الدخول...' : 'جارٍ استعادة مسودة السيرة الذاتية...'}
+          style={{ paddingBottom: insets.bottom, backgroundColor: 'transparent' }}
+        />
+      </ThemedBackground>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <View style={[styles.centerState, { paddingBottom: insets.bottom }]}>
-        <Icon name="lock-outline" size={42} color="#0c2a20" />
+      <ThemedBackground style={[styles.centerState, { paddingBottom: insets.bottom }]}>
+        <Icon name="lock-outline" size={42} color={COLORS.gold} />
         <Text style={styles.stateTitle}>هذه الميزة متاحة للمستخدمين المسجلين فقط</Text>
         <Text style={styles.stateText}>
           سيتم تحويلك إلى شاشة تسجيل الدخول لمتابعة إنشاء السيرة الذاتية.
@@ -1078,7 +1081,7 @@ export default function CVFormScreen() {
         >
           <Text style={styles.secondaryBtnText}>تسجيل الدخول</Text>
         </TouchableOpacity>
-      </View>
+      </ThemedBackground>
     );
   }
 
@@ -1093,7 +1096,7 @@ export default function CVFormScreen() {
         : copy.generateArabic;
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <ThemedBackground style={[styles.container, { paddingBottom: insets.bottom }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={[styles.pageDescription, languageTextStyle]}>
           {copy.pageDescription}
@@ -1544,32 +1547,31 @@ export default function CVFormScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </ThemedBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.sand },
+  container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
   centerState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.sand,
     paddingHorizontal: 24,
     gap: 12,
   },
   stateTitle: {
     fontFamily: 'NotoKufiArabic-Bold',
     fontSize: 16,
-    color: COLORS.greenDark,
+    color: COLORS.cream,
     textAlign: 'center',
     writingDirection: 'rtl',
   },
   stateText: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 13,
-    color: COLORS.muted,
+    color: 'rgba(255, 248, 239, 0.78)',
     textAlign: 'center',
     writingDirection: 'rtl',
     lineHeight: 22,
@@ -1577,7 +1579,7 @@ const styles = StyleSheet.create({
   pageDescription: {
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 13,
-    color: COLORS.muted,
+    color: 'rgba(255, 248, 239, 0.78)',
     marginBottom: 16,
     textAlign: 'auto',
     lineHeight: 22,
@@ -1846,9 +1848,9 @@ const styles = StyleSheet.create({
   retryBtnText: { color: COLORS.white, fontFamily: 'NotoKufiArabic-Bold', fontSize: 13 },
   footer: {
     padding: 16,
-    backgroundColor: COLORS.sand,
+    backgroundColor: COLORS.greenDark,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: COLORS.gold,
     gap: 10,
   },
   exportActionsRow: {

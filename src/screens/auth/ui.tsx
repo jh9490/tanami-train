@@ -1,40 +1,40 @@
 // auth/ui.tsx
-import React from 'react';
 import styled from 'styled-components/native';
+import { colors } from '../../theme/colors';
+import ThemedBackground from '../components/ThemedBackground';
 
-export const Screen = styled.View`
+export const Screen = styled(ThemedBackground)`
   flex: 1;
-  background-color: #fff1e2;
   padding: 16px 12px;
 `;
 
 export const Field = styled.TextInput.attrs({
-  placeholderTextColor: '#9ca3af',
+  placeholderTextColor: colors.hint,
 })`
-  background-color: #eceadf;
-  border: 1px solid #e5e7eb;
+  background-color: ${colors.card};
+  border: 1px solid ${colors.cardBorder};
   border-radius: 10px;
   padding: 12px 14px;
   margin-bottom: 10px;
   font-family: 'NotoKufiArabic-Regular';
-  color: #111827;
+  color: ${colors.text};
 `;
 
 export const PrimaryBtn = styled.TouchableOpacity`
-  background-color: #0f4f30;
+  background-color: ${colors.green};
   padding: 12px;
   border-radius: 10px;
   align-items: center;
   margin-top: 6px;
 `;
 export const PrimaryText = styled.Text`
-  color: #eceadf;
+  color: ${colors.card};
   font-size: 14px;
   font-family: 'NotoKufiArabic-Bold';
 `;
 
 export const LinkText = styled.Text`
-  color: #0f4f30;
+  color: ${colors.gold};
   font-size: 13px;
   font-family: 'NotoKufiArabic-Bold';
 `;
@@ -47,7 +47,7 @@ export const RowBetween = styled.View`
 `;
 
 export const Hint = styled.Text`
-  color: #6b7280;
+  color: rgba(255, 248, 239, 0.78);
   font-size: 12px;
   font-family: 'NotoKufiArabic-Regular';
   margin-bottom: 6px;

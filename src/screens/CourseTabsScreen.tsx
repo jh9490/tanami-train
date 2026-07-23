@@ -21,6 +21,8 @@ import { api } from '../services/api';
 import { getYouTubeEmbedUrl } from '../util/youtubeLive';
 import CertificatePreviewNami from './components/CertificatePreviewNami';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -141,21 +143,23 @@ function DetailsTab({ route }: any) {
   const plain = htmlToText(descriptionHtml);
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff1e2', padding: 12 }}>
-      <Text style={styles.h1}>{title}</Text>
+    <ThemedBackground>
+      <ScrollView style={styles.tabScroll}>
+        <Text style={styles.h1}>{title}</Text>
 
-      {meta && (meta.days || meta.hours || meta.cost !== undefined) ? (
-        <Text style={styles.meta}>
-          {meta.days ? `عدد الأيام: ${meta.days}  ` : ''}
-          {meta.hours ? `| الساعات: ${meta.hours}  ` : ''}
-          {meta.cost !== undefined ? `| التكلفة: ${meta.cost}` : ''}
+        {meta && (meta.days || meta.hours || meta.cost !== undefined) ? (
+          <Text style={styles.meta}>
+            {meta.days ? `عدد الأيام: ${meta.days}  ` : ''}
+            {meta.hours ? `| الساعات: ${meta.hours}  ` : ''}
+            {meta.cost !== undefined ? `| التكلفة: ${meta.cost}` : ''}
+          </Text>
+        ) : null}
+
+        <Text style={styles.body}>
+          {plain || 'لا تتوفر تفاصيل لهذه الدورة حالياً.'}
         </Text>
-      ) : null}
-
-      <Text style={styles.body}>
-        {plain || 'لا تتوفر تفاصيل لهذه الدورة حالياً.'}
-      </Text>
-    </ScrollView>
+      </ScrollView>
+    </ThemedBackground>
   );
 }
 
@@ -176,7 +180,7 @@ function MediaTab({ route }: any) {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff1e2' }}>
+    <ThemedBackground>
       {/* mini segmented control */}
       <View style={styles.segmented}>
         <TouchableOpacity
@@ -198,7 +202,7 @@ function MediaTab({ route }: any) {
         images.length === 0 ? (
           <EmptyState text="لا توجد صور للعرض." />
         ) : (
-          <ScrollView style={{ padding: 12 }}>
+          <ScrollView style={styles.mediaScroll}>
             <View style={styles.grid}>
               {images.map((f) => (
                 <TouchableOpacity key={f.id} onPress={() => open(f.url)} activeOpacity={0.85}>
@@ -211,7 +215,7 @@ function MediaTab({ route }: any) {
       ) : docs.length === 0 ? (
         <EmptyState text="لا توجد ملفات متاحة حالياً." />
       ) : (
-        <ScrollView style={{ padding: 12 }}>
+        <ScrollView style={styles.mediaScroll}>
           {docs.map((f) => (
             <TouchableOpacity
               key={f.id}
@@ -230,7 +234,7 @@ function MediaTab({ route }: any) {
           ))}
         </ScrollView>
       )}
-    </View>
+    </ThemedBackground>
   );
 }
 
@@ -285,10 +289,10 @@ function CertificateTab({ route }: any) {
 
   if (!certPack) {
     return (
-      <View style={styles.center}>
+      <ThemedBackground style={styles.center}>
         <Text style={styles.h1}>شهادتي</Text>
         <Text style={styles.bodySmall}>لا توجد شهادة متاحة لهذا النشاط.</Text>
-      </View>
+      </ThemedBackground>
     );
   }
 
@@ -299,41 +303,43 @@ function CertificateTab({ route }: any) {
     : undefined;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff1e2', padding: 16 }} contentContainerStyle={{ paddingBottom: 48 }}>
-      {/* Arabic certificate */}
-      <ViewShot ref={arShotRef} options={{ format: 'png', quality: 1 }}>
-        <CertificatePreviewNami
-          lang="ar"
-          name={arName}
-          course={courseAr}
-          hours={hours ?? undefined}
-          grade={grade ?? undefined}     // auto-mapped to Arabic inside component
-          date={date ?? undefined}
-          serial={serial ?? undefined}
-          qrSource={qrUri ? { uri: qrUri } : undefined}
-        />
-      </ViewShot>
-      <ActionRow onSave={() => saveImage(arShotRef)} onShare={() => shareImage(arShotRef)} />
+    <ThemedBackground>
+      <ScrollView style={styles.certificateScroll} contentContainerStyle={{ paddingBottom: 48 }}>
+        {/* Arabic certificate */}
+        <ViewShot ref={arShotRef} options={{ format: 'png', quality: 1 }}>
+          <CertificatePreviewNami
+            lang="ar"
+            name={arName}
+            course={courseAr}
+            hours={hours ?? undefined}
+            grade={grade ?? undefined}     // auto-mapped to Arabic inside component
+            date={date ?? undefined}
+            serial={serial ?? undefined}
+            qrSource={qrUri ? { uri: qrUri } : undefined}
+          />
+        </ViewShot>
+        <ActionRow onSave={() => saveImage(arShotRef)} onShare={() => shareImage(arShotRef)} />
 
-      <View style={{ height: 24 }} />
+        <View style={{ height: 24 }} />
 
-      {/* English certificate */}
-      <ViewShot ref={enShotRef} options={{ format: 'png', quality: 1 }}>
-        <CertificatePreviewNami
-          lang="en"
-          name={enName}
-          course={courseEn}
-          hours={hours ?? undefined}
-          grade={grade ?? undefined}     // stays in English
-          date={date ?? undefined}
-          serial={serial ?? undefined}
-          qrSource={qrUri ? { uri: qrUri } : undefined}
-        />
-      </ViewShot>
-      <ActionRow onSave={() => saveImage(enShotRef)} onShare={() => shareImage(enShotRef)} />
+        {/* English certificate */}
+        <ViewShot ref={enShotRef} options={{ format: 'png', quality: 1 }}>
+          <CertificatePreviewNami
+            lang="en"
+            name={enName}
+            course={courseEn}
+            hours={hours ?? undefined}
+            grade={grade ?? undefined}     // stays in English
+            date={date ?? undefined}
+            serial={serial ?? undefined}
+            qrSource={qrUri ? { uri: qrUri } : undefined}
+          />
+        </ViewShot>
+        <ActionRow onSave={() => saveImage(enShotRef)} onShare={() => shareImage(enShotRef)} />
 
-      <View style={{ height: 24 }} />
-    </ScrollView>
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    </ThemedBackground>
   );
 }
 
@@ -377,35 +383,37 @@ function LivePreviewTab({ route }: any) {
 
   if (!embedUrl || failed) {
     return (
-      <View style={styles.liveUnavailableWrap}>
+      <ThemedBackground style={styles.liveUnavailableWrap}>
         <Text style={styles.h1}>البث المباشر</Text>
         <Text style={styles.bodySmall}>
           رابط البث المباشر غير متاح حالياً لهذه الدورة.
         </Text>
-      </View>
+      </ThemedBackground>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.liveScreen}
-      contentContainerStyle={styles.liveContent}
-    >
-      <Text style={styles.h1}>البث المباشر</Text>
-      <View style={styles.playerShell}>
-        <WebView
-          source={{ html: buildYouTubeHtml(embedUrl), baseUrl: 'https://tanamitrain.com' }}
-          style={styles.player}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsFullscreenVideo
-          mediaPlaybackRequiresUserAction={false}
-          setSupportMultipleWindows={false}
-          onError={() => setFailed(true)}
-          onHttpError={() => setFailed(true)}
-        />
-      </View>
-    </ScrollView>
+    <ThemedBackground>
+      <ScrollView
+        style={styles.liveScreen}
+        contentContainerStyle={styles.liveContent}
+      >
+        <Text style={styles.h1}>البث المباشر</Text>
+        <View style={styles.playerShell}>
+          <WebView
+            source={{ html: buildYouTubeHtml(embedUrl), baseUrl: 'https://tanamitrain.com' }}
+            style={styles.player}
+            javaScriptEnabled
+            domStorageEnabled
+            allowsFullscreenVideo
+            mediaPlaybackRequiresUserAction={false}
+            setSupportMultipleWindows={false}
+            onError={() => setFailed(true)}
+            onHttpError={() => setFailed(true)}
+          />
+        </View>
+      </ScrollView>
+    </ThemedBackground>
   );
 }
 
@@ -474,16 +482,20 @@ export default function CourseTabsScreen({ route }: any) {
   }, [courseId, activityId, studentId, token, titleFromNav]);
 
   if (loading) {
-    return <AppLoading />;
+    return (
+      <ThemedBackground>
+        <AppLoading style={{ backgroundColor: 'transparent' }} />
+      </ThemedBackground>
+    );
   }
 
   if (err || !course) {
     return (
-      <View style={styles.center}>
+      <ThemedBackground style={styles.center}>
         <Text style={{ fontFamily: 'NotoKufiArabic-Regular', color: '#b00020' }}>
           {err || 'تعذّر جلب البيانات.'}
         </Text>
-      </View>
+      </ThemedBackground>
     );
   }
 
@@ -492,9 +504,11 @@ export default function CourseTabsScreen({ route }: any) {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarIndicatorStyle: { backgroundColor: '#0f4f30' },
-        tabBarStyle: { backgroundColor: '#eceadf' },
+        tabBarIndicatorStyle: { backgroundColor: colors.gold },
+        tabBarStyle: { backgroundColor: colors.greenDark },
         tabBarLabelStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 },
+        tabBarActiveTintColor: colors.gold,
+        tabBarInactiveTintColor: colors.tabInactive,
       }}
     >
       <Tab.Screen
@@ -530,46 +544,51 @@ export default function CourseTabsScreen({ route }: any) {
 
 /* ---------------- Styles ---------------- */
 const styles = StyleSheet.create({
-  h1: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, color: '#111' },
-  meta: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 12, color: '#666', marginTop: 6 },
-  body: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 14, color: '#444', lineHeight: 22, marginTop: 10 },
-  bodySmall: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 13, color: '#444', marginTop: 6 },
+  tabScroll: { flex: 1, backgroundColor: 'transparent', padding: 12 },
+  mediaScroll: { padding: 12 },
+  certificateScroll: { flex: 1, backgroundColor: 'transparent', padding: 16 },
+  h1: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, color: colors.cream },
+  meta: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 12, color: 'rgba(255, 248, 239, 0.72)', marginTop: 6 },
+  body: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 14, color: 'rgba(255, 248, 239, 0.82)', lineHeight: 22, marginTop: 10 },
+  bodySmall: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 13, color: 'rgba(255, 248, 239, 0.78)', marginTop: 6 },
 
   segmented: {
     flexDirection: 'row',
     alignSelf: 'center',
-    backgroundColor: '#eee',
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 248, 239, 0.16)',
     borderRadius: 999,
     padding: 4,
     marginTop: 10,
   },
   segBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, marginHorizontal: 2 },
-  segBtnActive: { backgroundColor: '#0f4f30' },
-  segText: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 12, color: '#333' },
-  segTextActive: { color: '#eceadf' },
+  segBtnActive: { backgroundColor: colors.gold },
+  segText: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 12, color: 'rgba(255, 248, 239, 0.78)' },
+  segTextActive: { color: colors.greenDarker },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start' },
   thumb: { width: 110, height: 110, borderRadius: 12, backgroundColor: '#ddd' },
 
   fileCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 248, 239, 0.12)',
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#eceadf',
+    borderColor: 'rgba(255, 248, 239, 0.16)',
   },
-  fileTitle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 13, color: '#0f4f30' },
-  fileMeta: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 11, color: '#666', marginTop: 4 },
+  fileTitle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 13, color: colors.cream },
+  fileMeta: { fontFamily: 'NotoKufiArabic-Regular', fontSize: 11, color: 'rgba(255, 248, 239, 0.72)', marginTop: 4 },
 
-  center: { flex: 1, backgroundColor: '#fff1e2', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  loader: { flex: 1, backgroundColor: '#fff1e2', alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
+  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40 },
-  emptyText: { fontFamily: 'NotoKufiArabic-Regular', color: '#666' },
+  emptyText: { fontFamily: 'NotoKufiArabic-Regular', color: 'rgba(255, 248, 239, 0.72)' },
 
-  liveScreen: { flex: 1, backgroundColor: '#fff1e2' },
+  liveScreen: { flex: 1, backgroundColor: 'transparent' },
   liveContent: { padding: 12, paddingBottom: 32 },
   playerShell: {
     width: '100%',
@@ -582,17 +601,17 @@ const styles = StyleSheet.create({
   player: { flex: 1, backgroundColor: '#000' },
   liveUnavailableWrap: {
     flex: 1,
-    backgroundColor: '#fff1e2',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
 
   primaryBtn: {
-    backgroundColor: '#0f4f30',
+    backgroundColor: colors.gold,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
   },
-  primaryText: { color: '#eceadf', fontFamily: 'NotoKufiArabic-Bold' },
+  primaryText: { color: colors.greenDarker, fontFamily: 'NotoKufiArabic-Bold' },
 });

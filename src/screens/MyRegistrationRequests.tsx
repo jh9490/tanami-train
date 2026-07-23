@@ -10,6 +10,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import AppLoading from './components/AppLoading';
+import ThemedBackground from './components/ThemedBackground';
+import { colors } from '../theme/colors';
 
 type ReqItem = {
   id: number;
@@ -125,42 +127,46 @@ export default function MyRegistrationRequests() {
 
   if (!isAuthenticated) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#fff1e2', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
-        <Text style={{ color: '#0f4f30', fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, textAlign: 'center' }}>
+      <ThemedBackground style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+        <Text style={{ color: colors.cream, fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, textAlign: 'center' }}>
           الرجاء تسجيل الدخول لعرض طلبات التسجيل الخاصة بك
         </Text>
-      </View>
+      </ThemedBackground>
     );
   }
 
   if (loading) {
-    return <AppLoading />;
+    return (
+      <ThemedBackground>
+        <AppLoading style={{ backgroundColor: 'transparent' }} />
+      </ThemedBackground>
+    );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff1e2', padding: 12 }}>
-      <Text style={{ color: '#0f4f30', fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, textAlign: 'center', marginBottom: 10 }}>
+    <ThemedBackground style={{ flex: 1, padding: 12 }}>
+      <Text style={{ color: colors.cream, fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, textAlign: 'center', marginBottom: 10 }}>
         طلبات تسجيلي
       </Text>
 
       <FlatList
         data={items}
         keyExtractor={(it) => String(it.id)}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />}
         ListEmptyComponent={
-          <Text style={{ textAlign: 'center', color: '#333', fontFamily: 'NotoKufiArabic-Regular', marginTop: 12 }}>
+          <Text style={{ textAlign: 'center', color: 'rgba(255, 248, 239, 0.72)', fontFamily: 'NotoKufiArabic-Regular', marginTop: 12 }}>
             لا توجد طلبات بعد
           </Text>
         }
         renderItem={({ item }) => (
           <View
             style={{
-              backgroundColor: '#eceadf',
+              backgroundColor: 'rgba(255, 248, 239, 0.12)',
               borderRadius: 14,
               padding: 12,
               marginBottom: 10,
               borderWidth: 1,
-              borderColor: '#eadac3',
+              borderColor: 'rgba(255, 248, 239, 0.16)',
             }}
           >
             {/* top row: status + mode */}
@@ -185,15 +191,15 @@ export default function MyRegistrationRequests() {
         )}
         contentContainerStyle={{ paddingBottom: 16 }}
       />
-    </View>
+    </ThemedBackground>
   );
 }
 
 function Row({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <View style={{ flexDirection: 'row', paddingVertical: 4 }}>
-      <Text style={{ width: 110, color: '#0f4f30', fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 }}>{label}</Text>
-      <Text style={{ flex: 1, color: '#0f4f30', fontFamily: 'NotoKufiArabic-Regular', fontSize: 12 }}>
+      <Text style={{ width: 110, color: colors.cream, fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 }}>{label}</Text>
+      <Text style={{ flex: 1, color: 'rgba(255, 248, 239, 0.78)', fontFamily: 'NotoKufiArabic-Regular', fontSize: 12 }}>
         {value === 0 || value ? String(value) : '—'}
       </Text>
     </View>

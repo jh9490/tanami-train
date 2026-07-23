@@ -1,16 +1,15 @@
 // src/navigation/AppNavigator.tsx
 import React from 'react';
-import { I18nManager } from 'react-native';
+import { I18nManager, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 /* Providers */
-import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AuthProvider } from '../context/AuthContext';
 
 /* Screens */
-import SplashScreen from '../screens/SplashScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CoursesScreen from '../screens/CoursesScreen';
 import GalleryScreen from '../screens/GalleryScreen';
@@ -30,6 +29,7 @@ import VerifyScreen from '../screens/auth/VerifyScreen';
 /* Account/Settings */
 import AccountScreen from '../screens/AccountScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import OnlineCoursesScreen from '../screens/OnlineCoursesScreen';
 
 
 /* User Screen */
@@ -39,6 +39,7 @@ import CourseTabs from '../screens/CourseTabsScreen';
 import MyRegistrationRequests from '../screens/MyRegistrationRequests';
 import MyPhotosScreen from '../screens/MyPhotosScreen';
 import { rtlStyles } from '../theme/rtl';
+import { colors } from '../theme/colors';
 
 /* ===== Types ===== */
 export type RootStackParamList = {
@@ -88,6 +89,7 @@ export type UserStackParamList = {
   MyCourses: undefined;
   CourseTabs: { courseId: string; title: string } | undefined;
   MyRegistrationRequests: undefined;
+  OnlineCourses: undefined;
   VerifyCertificateScreen: undefined;
 };
 
@@ -100,10 +102,11 @@ const AccountStackNav = createNativeStackNavigator<AccountStackParamList>();
 const UserStackNav = createNativeStackNavigator<UserStackParamList>();
 /* ===== Shared Header Style ===== */
 const headerCommon = {
-  headerStyle: { backgroundColor: '#0c2a20' },
+  headerStyle: { backgroundColor: colors.greenDark },
   headerTitleStyle: { fontFamily: 'NotoKufiArabic-Bold', fontSize: 18 },
-  headerTintColor: '#cbae82',
+  headerTintColor: colors.gold,
   headerTitleAlign: 'center' as const,
+  headerShadowVisible: false,
   contentStyle: rtlStyles.screen,
 };
 
@@ -196,6 +199,11 @@ function UserStack() {
         options={{ title: 'طلباتي' }}
       />
       <UserStackNav.Screen
+        name="OnlineCourses"
+        component={OnlineCoursesScreen}
+        options={{ title: 'احضر أونلاين' }}
+      />
+      <UserStackNav.Screen
         name="VerifyCertificateScreen"
         component={VerifyCertificateScreen}
         options={{ title: 'تحقق من شهادة' }}
@@ -235,8 +243,8 @@ function MainTabs() {
         headerLeft: () => null,
         headerRight: () => null,
         tabBarStyle: {
-          backgroundColor: '#0c2a20',
-          borderTopColor: '#ccc',
+          backgroundColor: colors.greenDark,
+          borderTopColor: colors.gold,
           borderTopWidth: 1,
           height: 75 + insets.bottom,
           paddingBottom: Math.max(10, insets.bottom),
@@ -245,8 +253,8 @@ function MainTabs() {
         },
         sceneStyle: rtlStyles.screen,
         tabBarLabelStyle: { fontSize: 12, fontFamily: 'NotoKufiArabic-Bold' },
-        tabBarActiveTintColor: '#cbae82',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: colors.gold,
+        tabBarInactiveTintColor: colors.tabInactive,
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'الرئيسية' }} />
@@ -312,6 +320,7 @@ function Root() {
 export default function AppNavigator() {
   return (
     <AuthProvider>
+      <StatusBar backgroundColor={colors.greenDark} barStyle="light-content" />
       <NavigationContainer direction="rtl">
         <Root />
       </NavigationContainer>

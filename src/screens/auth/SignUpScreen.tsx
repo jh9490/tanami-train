@@ -20,6 +20,7 @@ import { api } from '../../services/api';
 import { buildE164, digitsOnly, stripLeadingZero } from '../../util/phone';
 import FlagIcon from '../../util/FlagIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ThemedBackground from '../components/ThemedBackground';
 
 const ARAB_COUNTRIES = [
   { nameAr: 'السعودية', iso: 'SA', dial: '966' },
@@ -102,17 +103,18 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
           {item.nameAr}
         </Text>
       </View>
-      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, color: authColors.primary }}>
+      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, color: authColors.text }}>
         +{item.dial}
       </Text>
     </Pressable>
   );
 
   return (
-    <KeyboardAvoidingView
-      style={authStyles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <ThemedBackground>
+      <KeyboardAvoidingView
+        style={authStyles.screen}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView
         contentContainerStyle={[authStyles.scrollContent, { paddingBottom: 72 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
@@ -147,7 +149,7 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
               }}
             >
               <FlagIcon iso={country.iso} size={18} />
-              <Text style={{ fontFamily: 'NotoKufiArabic-Bold', color: authColors.primary }}>
+              <Text style={{ fontFamily: 'NotoKufiArabic-Bold', color: authColors.text }}>
                 +{country.dial}
               </Text>
             </TouchableOpacity>
@@ -220,7 +222,8 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
           </Pressable>
         </Modal>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </ThemedBackground>
   );
 };
 
