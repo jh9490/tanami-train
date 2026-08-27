@@ -101,14 +101,15 @@ const SubCoursesScreen: React.FC = () => {
         />
       </Container>
 
-      {/* Reuse dialog, but show ONLY headlines tab */}
+      {/* Package courses open on backend-backed duration details. */}
       <CourseDialog
         visible={dialogOpen}
         course={selected}
         onClose={() => setDialogOpen(false)}
         isAuthenticated={isAuthenticated}
         token={token}
-        enabledTabs={['head']}   // 👈 headlines-only
+        enabledTabs={['head', 'details']}
+        durationOnlyDetails
       />
     </GestureHandlerRootView>
   );

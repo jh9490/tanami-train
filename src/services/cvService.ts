@@ -94,7 +94,7 @@ type SyncFieldDescriptor = {
   id: string;
   label: string;
   field: CVLocalizedField;
-  allowProtectedTransform?: boolean;
+  preserveText?: boolean;
 };
 
 function trimText(value: string): string {
@@ -582,7 +582,7 @@ function buildSyncFieldId(prefix: string, id: string, fieldName: string): string
 
 function collectDraftFields(draft: CVBilingualDraft): SyncFieldDescriptor[] {
   const fields: SyncFieldDescriptor[] = [
-    { id: 'fullName', label: 'الاسم الكامل', field: draft.fullName, allowProtectedTransform: true },
+    { id: 'fullName', label: 'الاسم الكامل', field: draft.fullName, preserveText: true },
     { id: 'contact.email', label: 'البريد الإلكتروني', field: draft.contact.email },
     { id: 'contact.phone', label: 'رقم الجوال', field: draft.contact.phone },
     { id: 'contact.address', label: 'العنوان', field: draft.contact.address },
@@ -1041,6 +1041,17 @@ export async function syncDraftForLanguage(
         return false;
       }
 
+      // A person's name is identity data, not prose. On-device translation can
+      // turn Arabic names into their dictionary meanings (for example, مكتبي
+      // becomes "my office"). Keep an existing localized name, or copy the
+      // source spelling into an empty target so the user can transliterate it.
+      if (descriptor.preserveText && targetValue) {
+        preservedFieldIds.push(descriptor.id);
+        descriptor.field.syncState = 'preserved';
+        descriptor.field.failureReason = undefined;
+        return false;
+      }
+
       if (descriptor.field.syncState === 'preserved' || (overwriteMode === 'preserve-target' && targetValue)) {
         preservedFieldIds.push(descriptor.id);
         descriptor.field.syncState = 'preserved';
@@ -1060,7 +1071,7 @@ export async function syncDraftForLanguage(
       id: descriptor.id,
       label: descriptor.label,
       field: descriptor.field,
-      allowProtectedTransform: descriptor.allowProtectedTransform,
+      preserveText: descriptor.preserveText,
       text: getFieldValue(descriptor.field, sourceLanguage),
     }));
 
@@ -1081,7 +1092,7 @@ export async function syncDraftForLanguage(
     translationRequests.map(item => ({
       id: item.id,
       text: item.text,
-      allowProtectedTransform: item.allowProtectedTransform,
+      preserveText: item.preserveText,
     })),
     sourceLanguage,
     targetLanguage,

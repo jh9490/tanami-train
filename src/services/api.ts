@@ -1,7 +1,7 @@
 // src/services/api.ts
 
 /** Base URLs */
-export const BASE_ROOT = 'https://tanamitrain.com/tanamiAdmin';
+export const BASE_ROOT = 'https://admin.tanamitrain.com';
 const BASE_URL  = `${BASE_ROOT}/api/mobile-app`;   // mobile-app endpoints
 const BASE      = BASE_ROOT;                       // legacy helpers expect BASE
 

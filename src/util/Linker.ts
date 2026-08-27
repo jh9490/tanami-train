@@ -15,14 +15,11 @@ export async function openLinkSafe(rawUrl: string) {
 
   const url = ensureHttp(trimmed);
   try {
-    const supported = await Linking.canOpenURL(url);
-    if (!supported) {
-      Alert.alert('لا يمكن فتح الرابط', 'لا يوجد تطبيق مناسب لفتح هذا الرابط على جهازك.');
-      return;
-    }
-
+    // `canOpenURL` can report false for valid web URLs on Android 11+ when the
+    // resolving browser/app is not visible to the package. Let the OS resolve
+    // universal HTTP(S) links directly and handle a genuine failure below.
     await Linking.openURL(url);
-  } catch (e) {
+  } catch {
     Alert.alert('تعذر فتح الرابط', 'يرجى المحاولة لاحقًا أو التأكد من وجود متصفح محدث على جهازك.');
   }
 }

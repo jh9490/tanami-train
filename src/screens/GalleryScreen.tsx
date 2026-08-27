@@ -71,7 +71,7 @@ type ApiImage = {
   upload_date: string;
 };
 
-const API_BASE = 'https://tanamitrain.com/tanamiAdmin/api';
+const API_BASE = 'https://admin.tanamitrain.com/api';
 // Public/admin gallery (all images of type=gallery)
 const GALLERY_URL = `${API_BASE}/mobile-app/gallery`;
 // User-specific bookmarks

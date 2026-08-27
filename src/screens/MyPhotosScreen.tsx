@@ -79,8 +79,8 @@ type SavedImage = {
 };
 
 /* ------------------------------- API ---------------------------------- */
-const API_BASE = 'https://tanamitrain.com/tanamiAdmin/api';
-const API_ORIGIN = 'https://tanamitrain.com/tanamiAdmin'; // ensure absolute URLs
+const API_BASE = 'https://admin.tanamitrain.com/api';
+const API_ORIGIN = 'https://admin.tanamitrain.com'; // ensure absolute URLs
 
 const BOOKMARK_LIST_URL = `${API_BASE}/user/images-list`;
 const UNBOOKMARK_URL = (id: number) => `${API_BASE}/user/images-unbookmark?id=${id}`;

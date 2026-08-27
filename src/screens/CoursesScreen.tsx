@@ -75,7 +75,7 @@ type SubCourseParam = {
   hours?: number | null;
 };
 
-const BASE = 'http://tanamitrain.com/tanamiAdmin';
+const BASE = 'https://admin.tanamitrain.com';
 const PACKAGES_URL = `${BASE}/api/mobile-app/packages-with-courses`;
 
 /* simple icon chooser by keywords (ar/en) */

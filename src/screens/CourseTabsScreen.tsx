@@ -299,7 +299,7 @@ function CertificateTab({ route }: any) {
   const { serial, date, grade, hours, arName, enName, courseAr, courseEn } = certPack;
 
   const qrUri = serial
-    ? `https://tanamitrain.com/tanamiAdmin/api/certi/qr?serial=${encodeURIComponent(serial)}&s=5&qz=2`
+    ? `https://admin.tanamitrain.com/api/certi/qr?serial=${encodeURIComponent(serial)}&s=5&qz=2`
     : undefined;
 
   return (

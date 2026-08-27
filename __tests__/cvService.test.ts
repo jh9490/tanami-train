@@ -357,7 +357,6 @@ describe('cvService helpers', () => {
     const bilingualDraft = createBilingualDraftFromDraft(createArabicDraft(), 'ar');
 
     mockedTranslationModule.translateBatch.mockResolvedValue([
-      'Ahmed Saleh',
       'Riyadh, Saudi Arabia',
       'Senior Software Engineer',
       'Senior mobile engineer',
@@ -383,9 +382,9 @@ describe('cvService helpers', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.sync.updatedFieldIds).toContain('fullName');
+      expect(result.sync.preservedFieldIds).toContain('fullName');
       expect(result.draft.editingLanguage).toBe('en');
-      expect(result.draft.fullName.en).toBe('Ahmed Saleh');
+      expect(result.draft.fullName.en).toBe('أحمد صالح');
       expect(result.draft.contact.email.en).toBe('ahmed.saleh@example.com');
       expect(result.draft.contact.address.en).toBe('Riyadh, Saudi Arabia');
       expect(result.draft.contact.title.en).toBe('Senior Software Engineer');
@@ -395,13 +394,65 @@ describe('cvService helpers', () => {
       expect(result.draft.education[0].year.en).toBe('2020');
       expect(result.draft.certifications[0].date.en).toBe('2024');
       expect(result.draft.summary.syncState).toBe('auto_populated');
+      expect(mockedTranslationModule.translateBatch.mock.calls[0]?.[0]).not.toContain('أحمد صالح');
     }
+  });
+
+  it('preserves a personal name instead of translating its dictionary meaning', async () => {
+    const bilingualDraft = createBilingualDraftFromDraft(
+      {
+        fullName: 'مالك مكتبي',
+        contact: { email: '', phone: '', address: '', title: '' },
+        summary: '',
+        experiences: [],
+        education: [],
+        skills: [],
+        certifications: [],
+        volunteerExperiences: [],
+      },
+      'ar',
+    );
+
+    const firstSwitch = await syncDraftForLanguage(bilingualDraft, {
+      sourceLanguage: 'ar',
+      targetLanguage: 'en',
+    });
+
+    expect(firstSwitch.ok).toBe(true);
+    if (!firstSwitch.ok) {
+      return;
+    }
+
+    expect(firstSwitch.draft.fullName.en).toBe('مالك مكتبي');
+    expect(firstSwitch.draft.fullName.syncState).toBe('preserved');
+    expect(firstSwitch.sync.preservedFieldIds).toContain('fullName');
+    expect(mockedTranslationModule.translateBatch).not.toHaveBeenCalled();
+
+    const manuallyLocalizedDraft = {
+      ...firstSwitch.draft,
+      fullName: updateLocalizedFieldValue(firstSwitch.draft.fullName, 'en', 'Malik Maktabi'),
+    };
+    const latestArabicDraft = {
+      ...manuallyLocalizedDraft,
+      fullName: updateLocalizedFieldValue(manuallyLocalizedDraft.fullName, 'ar', 'مالك علي مكتبي'),
+    };
+
+    const secondSwitch = await syncDraftForLanguage(latestArabicDraft, {
+      sourceLanguage: 'ar',
+      targetLanguage: 'en',
+    });
+
+    expect(secondSwitch.ok).toBe(true);
+    if (secondSwitch.ok) {
+      expect(secondSwitch.draft.fullName.en).toBe('Malik Maktabi');
+      expect(secondSwitch.sync.preservedFieldIds).toContain('fullName');
+    }
+    expect(mockedTranslationModule.translateBatch).not.toHaveBeenCalled();
   });
 
   it('propagates the latest edited English value back into Arabic on the next switch', async () => {
     const bilingualDraft = createBilingualDraftFromDraft(createArabicDraft(), 'ar');
     mockedTranslationModule.translateBatch.mockResolvedValue([
-      'Ahmed Saleh',
       'Riyadh, Saudi Arabia',
       'Senior Software Engineer',
       'Senior mobile engineer',

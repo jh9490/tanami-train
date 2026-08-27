@@ -142,7 +142,7 @@ Before producing a release, verify:
 The app uses the Tanami backend under:
 
 ```text
-https://tanamitrain.com/tanamiAdmin
+https://admin.tanamitrain.com
 ```
 
 Main mobile endpoints are accessed through:

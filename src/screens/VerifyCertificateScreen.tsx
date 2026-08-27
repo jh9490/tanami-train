@@ -28,7 +28,7 @@ import CertificatePreviewNami from './components/CertificatePreviewNami';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
 
-const API_URL = 'http://tanamitrain.com/tanamiAdmin/api/mobile-app/check-certi';
+const API_URL = 'https://admin.tanamitrain.com/api/mobile-app/check-certi';
 
 /* ---------- styled ---------- */
 const Container = styled(ThemedBackground)`flex:1;`;
@@ -289,7 +289,7 @@ export default function VerifyCertificateScreen() {
                     grade={data.grade ?? undefined}
                     date={data.date ?? undefined}
                     serial={data.serial}
-                    qrSource={{ uri: `https://tanamitrain.com/tanamiAdmin/api/certi/qr?serial=${encodeURIComponent(data.serial!)}&s=5&qz=2` }}
+                    qrSource={{ uri: `https://admin.tanamitrain.com/api/certi/qr?serial=${encodeURIComponent(data.serial!)}&s=5&qz=2` }}
                   />
                 </ViewShot>
 
@@ -316,7 +316,7 @@ export default function VerifyCertificateScreen() {
                     grade={data.grade ?? undefined}
                     date={data.date ?? undefined}
                     serial={data.serial}
-                    qrSource={{ uri: `https://tanamitrain.com/tanamiAdmin/api/certi/qr?serial=${encodeURIComponent(data.serial!)}&s=5&qz=2` }}
+                    qrSource={{ uri: `https://admin.tanamitrain.com/api/certi/qr?serial=${encodeURIComponent(data.serial!)}&s=5&qz=2` }}
                   />
                 </ViewShot>
 

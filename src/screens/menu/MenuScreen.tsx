@@ -1,16 +1,17 @@
 // src/screens/MenuScreen.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MenuStackParamList, RootStackParamList } from '../../navigation/AppNavigator';
 import { useAuth } from '../../context/AuthContext';
-import { Linking } from 'react-native';
 import { rtlStyles } from '../../theme/rtl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedBackground from '../components/ThemedBackground';
 import { colors } from '../../theme/colors';
+import { openLinkSafe } from '../../util/Linker';
+import { TANAMI_TRAIN_LOCATION } from '../../constants/location';
 
 type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<MenuStackParamList>,
@@ -69,41 +70,8 @@ export default function MenuScreen() {
     ]);
   };
 
-  const lat = 24.4539;  // example
-  const lng = 54.3773;  // example
-  const label = 'Tanami HQ'; // optional
-  const query = `${lat},${lng}`; // or 'Street, City'
-  async function tryOpen(url: string) {
-    try {
-      const ok = await Linking.canOpenURL(url);
-      if (ok) { await Linking.openURL(url); return true; }
-      return false;
-    } catch { return false; }
-  }
-  
-  const openMap = async () => {
-    // Build candidates (no dynamic links)
-    const candidates: string[] = [
-      // 1) Open Google Maps app directly (iOS & Android)
-      `comgooglemaps://?q=${encodeURIComponent(label || query)}`,
-  
-      // 2) Android geo: URI (most OEMs)
-      Platform.OS === 'android'
-        ? `geo:${lat},${lng}?q=${encodeURIComponent(label || query)}`
-        : '',
-  
-      // 3) Official web URL (works everywhere)
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
-  
-      // 4) LAST RESORT: your original short link (avoid, but keep as fallback)
-      `https://maps.app.goo.gl/sLtZczjuXT6cuSZ88`,
-    ].filter(Boolean);
-  
-    for (const url of candidates) {
-      if (await tryOpen(url)) return;
-    }
-  
-    Alert.alert('خطأ', 'لا يمكن فتح الخريطة على هذا الجهاز.');
+  const openMap = () => {
+    return openLinkSafe(TANAMI_TRAIN_LOCATION.googleMapsUrl);
   };
 
   return (

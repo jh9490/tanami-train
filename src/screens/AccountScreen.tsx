@@ -12,6 +12,7 @@ import AppLoading from './components/AppLoading';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedBackground from './components/ThemedBackground';
 import { colors as themeColors } from '../theme/colors';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const COLORS = {
   green: '#0f4f30',
@@ -229,10 +230,13 @@ export default function AccountScreen() {
             </View>
           )}
 
-          <View style={styles.phoneRow}>
-            <Text style={styles.label}>رقم الجوال</Text>
-            <Text style={styles.value}>{user?.username || '—'}</Text>
-          </View>
+          <Field label="رقم الجوال">
+            <View style={[styles.input, styles.disabledInput]} accessibilityState={{ disabled: true }}>
+              <Icon name="lock-outline" size={18} color="rgba(255, 248, 239, 0.58)" />
+              <Text style={styles.disabledInputText}>{user?.username || '—'}</Text>
+            </View>
+            <Text style={styles.disabledHint}>رقم الجوال مرتبط بالحساب ولا يمكن تعديله</Text>
+          </Field>
 
           <Field label="الاسم الكامل (عربي)">
             <TextInput style={styles.input} placeholder="اكتب اسمك الكامل بالعربية"
@@ -359,18 +363,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   bannerText: { fontFamily: 'NotoKufiArabic-Bold', color: '#7a5200', fontSize: 13, textAlign: 'center' },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.sage,
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-  },
   label: { fontFamily: 'NotoKufiArabic-Bold', color: themeColors.cream, fontSize: 13 },
-  value: { fontFamily: 'NotoKufiArabic-Regular', color: themeColors.cream, fontSize: 14 },
   input: {
     backgroundColor: 'rgba(255, 248, 239, 0.12)',
     borderRadius: 16,
@@ -381,6 +374,29 @@ const styles = StyleSheet.create({
     fontFamily: 'NotoKufiArabic-Regular',
     fontSize: 14,
     color: themeColors.cream,
+  },
+  disabledInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 248, 239, 0.07)',
+    borderColor: 'rgba(255, 248, 239, 0.12)',
+  },
+  disabledInputText: {
+    flex: 1,
+    marginLeft: 10,
+    fontFamily: 'NotoKufiArabic-Regular',
+    fontSize: 14,
+    color: 'rgba(255, 248, 239, 0.62)',
+    textAlign: 'right',
+  },
+  disabledHint: {
+    marginTop: 4,
+    fontFamily: 'NotoKufiArabic-Regular',
+    fontSize: 10,
+    lineHeight: 17,
+    color: 'rgba(255, 248, 239, 0.58)',
+    textAlign: 'right',
   },
   primaryBtn: {
     marginTop: 18, backgroundColor: themeColors.gold, paddingVertical: 13,

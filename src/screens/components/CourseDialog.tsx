@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -39,6 +39,10 @@ type Tabs = 'head' | 'details' | 'poster' | 'register';
 type Props = BaseProps & {
   /** Control which tabs to show. Defaults to all (incl. register if authenticated). */
   enabledTabs?: Array<Tabs>;
+  /** Tab shown whenever a course is opened. Defaults to headlines. */
+  initialTab?: Tabs;
+  /** Limit course details to the backend duration fields. */
+  durationOnlyDetails?: boolean;
 };
 
 const cleanToBullets = (raw?: string | null): string[] => {
@@ -70,21 +74,29 @@ export default function CourseDialog({
   isAuthenticated,
   token,
   enabledTabs,
+  initialTab = 'head',
+  durationOnlyDetails = false,
 }: Props) {
   // default tabs: show all (register only if authenticated)
   const defaultTabs: Tabs[] = ['head', 'details', 'poster', ...(isAuthenticated ? (['register'] as const) : [])];
   const tabs: Tabs[] = enabledTabs?.length ? enabledTabs : defaultTabs;
 
-  const [tab, setTab] = useState<Tabs>('head');
+  const [tab, setTab] = useState<Tabs>(initialTab);
   const [mode, setMode] = useState<'onsite' | 'online'>('onsite');
   const [submitting, setSubmitting] = useState(false);
 
   const c = course;
   const bullets = useMemo(() => cleanToBullets(c?.headLines), [c?.headLines]);
-  if (!visible || !c) return null;
 
-  // Make sure current tab is allowed (e.g., when enabledTabs changes)
-  if (!tabs.includes(tab)) setTab(tabs[0]);
+  useEffect(() => {
+    if (!visible) return;
+    setTab(tabs.includes(initialTab) ? initialTab : tabs[0]);
+  // Reset the dialog for each newly opened course. The enabled tab list is
+  // supplied declaratively by the caller and does not need to trigger a reset.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c?.id, initialTab, visible]);
+
+  if (!visible || !c) return null;
 
   const title = c.nameAr || c.title || '—';
 
@@ -222,10 +234,14 @@ export default function CourseDialog({
                   <View style={{ paddingVertical: 8, flex: 1 }}>
                     <InfoRow label="عدد الأيام" value={c.days} />
                     <InfoRow label="عدد الساعات" value={c.hours} />
-                    <InfoRow label="التاريخ" value={c.date} />
-                    <InfoRow label="تاريخ الانتهاء" value={c.endDate} />
-                    <InfoRow label="الحالة" value={c.live ? 'مباشر' : '—'} />
-                    <InfoRow label="التكلفة" value={typeof c.cost === 'number' ? `${c.cost} ل.س` : '—'} />
+                    {!durationOnlyDetails && (
+                      <>
+                        <InfoRow label="التاريخ" value={c.date} />
+                        <InfoRow label="تاريخ الانتهاء" value={c.endDate} />
+                        <InfoRow label="الحالة" value={c.live ? 'مباشر' : '—'} />
+                        <InfoRow label="التكلفة" value={typeof c.cost === 'number' ? `${c.cost} ل.س` : '—'} />
+                      </>
+                    )}
                   </View>
                 )}
 

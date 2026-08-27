@@ -35,7 +35,7 @@ The app utilizes **React Navigation v7** with multiple nested stacks and bottom 
 ## 4. Key API Services
 The application wraps the native `fetch` API inside `src/services/api.ts` with custom debugging utilities, error interception, and authorization header management:
 
-- **Base Endpoints**: Connects pointing mostly to `https://tanamitrain.com/tanamiAdmin` with specialized branching for `/api/mobile-app`, `/api/telegram`, and `/api/fcm`.
+- **Base Endpoints**: Connects pointing mostly to `https://admin.tanamitrain.com` with specialized branching for `/api/mobile-app`, `/api/telegram`, and `/api/fcm`.
 - **Key Client Modules**:
   - **Authentication**: Native login, OTP delivery through both SMS and uniquely **Telegram**, and profile editing paths.
   - **Courses**: Retrieval of public courses (`fetchCourses`), detailed view tracking (`fetchCourseById`), and handling user registrations for activities.

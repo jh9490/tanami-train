@@ -20,7 +20,7 @@ type NativeTranslationModule = {
 export type CVTranslationItem = {
   id: string;
   text: string;
-  allowProtectedTransform?: boolean;
+  preserveText?: boolean;
 };
 
 export type CVTranslatedTextValue = {
@@ -160,10 +160,10 @@ export async function translateTextBatch(
 ): Promise<CVTranslationBatchResult> {
   const normalizedItems = items.filter(item => trimText(item.text).length > 0);
   const preservedItems = normalizedItems.filter(
-    item => item.allowProtectedTransform !== true && shouldPreserveText(item.text),
+    item => item.preserveText === true || shouldPreserveText(item.text),
   );
   const translatableItems = normalizedItems.filter(
-    item => item.allowProtectedTransform === true || !shouldPreserveText(item.text),
+    item => item.preserveText !== true && !shouldPreserveText(item.text),
   );
   const preservedValues = buildPreservedValues(preservedItems);
 

@@ -44,7 +44,7 @@ const COLORS = {
   white: '#ffffff',
 };
 
-const BASE = 'http://tanamitrain.com/tanamiAdmin';
+const BASE = 'https://admin.tanamitrain.com';
 const SLIDERS_URL = `${BASE}/api/mobile-app/sliders`;
 const ACTIVITIES_URL = `${BASE}/api/mobile-app/activities`;
 
