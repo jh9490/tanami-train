@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
+import { resolveMediaUrl } from '../util/mediaUrl';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -80,26 +81,17 @@ type SavedImage = {
 
 /* ------------------------------- API ---------------------------------- */
 const API_BASE = 'https://admin.tanamitrain.com/api';
-const API_ORIGIN = 'https://admin.tanamitrain.com'; // ensure absolute URLs
 
 const BOOKMARK_LIST_URL = `${API_BASE}/user/images-list`;
 const UNBOOKMARK_URL = (id: number) => `${API_BASE}/user/images-unbookmark?id=${id}`;
-
-function absUrl(u?: string | null): string {
-  if (!u) return '';
-  const s = String(u);
-  if (/^https?:\/\//i.test(s)) return s;
-  if (s.startsWith('/')) return API_ORIGIN + s;
-  return `${API_ORIGIN}/${s}`;
-}
 
 function normalizeItem(it: any): SavedImage {
   const full = it.full_url || it.url || it.p50 || it.thumb || '';
   const thumb = it.thumb_url || it.thumb || it.p50 || full || '';
   return {
     id: Number(it.id),
-    full_url: absUrl(full),
-    thumb_url: absUrl(thumb),
+    full_url: resolveMediaUrl(full),
+    thumb_url: resolveMediaUrl(thumb),
     upload_date: String(it.upload_date || ''),
   };
 }

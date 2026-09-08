@@ -13,6 +13,8 @@ import { CourseItem } from '../types/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
+import { TANAMI_WHATSAPP_URL } from '../constants/contact';
+import { openLinkSafe } from '../util/Linker';
 
 type Phase = 'current' | 'upcoming' | 'previous';
 
@@ -92,6 +94,21 @@ export default function MyCoursesScreen({ navigation }: any) {
         <TabBtn value="previous" label="السابقة" />
       </View>
 
+      {tab === 'previous' && (
+        <View style={styles.previousCoursesWarning}>
+          <Text style={styles.previousCoursesWarningText}>
+            إذا كانت لديك دورات سابقة ولا تظهر هنا كلها أو بعضها، يرجى التواصل مع إدارة تنامي ترين عبر واتساب.
+          </Text>
+          <TouchableOpacity
+            accessibilityRole="link"
+            activeOpacity={0.8}
+            onPress={() => openLinkSafe(TANAMI_WHATSAPP_URL)}
+          >
+            <Text style={styles.whatsappLink}>التواصل عبر واتساب</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* list */}
       <View style={styles.listWrap}>
         {loading ? (
@@ -170,6 +187,31 @@ const styles = StyleSheet.create({
   listWrap: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  previousCoursesWarning: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(203, 174, 130, 0.16)',
+    borderColor: colors.gold,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  previousCoursesWarningText: {
+    color: colors.cream,
+    fontFamily: 'NotoKufiArabic-Regular',
+    fontSize: 10,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  whatsappLink: {
+    color: colors.gold,
+    fontFamily: 'NotoKufiArabic-Bold',
+    fontSize: 10,
+    lineHeight: 19,
+    marginTop: 3,
+    textDecorationLine: 'underline',
   },
 
   // Course card

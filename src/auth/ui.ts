@@ -11,6 +11,7 @@ export const authColors = {
   text: colors.cream,
   muted: 'rgba(255, 248, 239, 0.78)',
   hint: 'rgba(255, 248, 239, 0.58)',
+  modalText: colors.text,
   white: colors.white,
 };
 

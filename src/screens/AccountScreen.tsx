@@ -13,6 +13,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedBackground from './components/ThemedBackground';
 import { colors as themeColors } from '../theme/colors';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import {
+  dateOnlyToPickerDate,
+  isDateOnly,
+  pickerDateToDateOnly,
+  todayAsUtcCalendarDate,
+} from '../util/dateOnly';
 
 const COLORS = {
   green: '#0f4f30',
@@ -28,23 +34,10 @@ const COLORS = {
 };
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-const isDate  = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
 const norm = (v: string) => {
   const t = (v || '').trim();
   return t === '' ? null : t;
 };
-const toYMD = (d: Date) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-const fromYMD = (s?: string | null) => {
-  if (!s || !isDate(s)) return new Date(2000, 0, 1);
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
-};
-
 export default function AccountScreen() {
   const { user, token, signOut, refreshProfile } = useAuth();
   const insets = useSafeAreaInsets();
@@ -156,7 +149,7 @@ export default function AccountScreen() {
       Alert.alert('تنبيه', 'صيغة البريد الإلكتروني غير صحيحة.');
       return;
     }
-    if (date_of_birth.trim() && !isDate(date_of_birth.trim())) {
+    if (date_of_birth.trim() && !isDateOnly(date_of_birth.trim())) {
       Alert.alert('تنبيه', 'صيغة التاريخ يجب أن تكون YYYY-MM-DD مثل 1995-06-12.');
       return;
     }
@@ -205,7 +198,7 @@ export default function AccountScreen() {
   // Date picker change
   const onChangeDob = (_: any, picked?: Date) => {
     if (Platform.OS === 'android') setShowDobPicker(false); // Android picker is inline-modal
-    if (picked) setDob(toYMD(picked));
+    if (picked) setDob(pickerDateToDateOnly(picked));
   };
 
   return (
@@ -296,11 +289,12 @@ export default function AccountScreen() {
 
           {showDobPicker && (
             <DateTimePicker
-              value={fromYMD(date_of_birth)}
+              value={dateOnlyToPickerDate(date_of_birth)}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
               onChange={onChangeDob}
-              maximumDate={new Date()} // لا مستقبل
+              maximumDate={todayAsUtcCalendarDate()} // لا مستقبل
+              timeZoneName="UTC"
             />
           )}
 

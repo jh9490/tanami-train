@@ -11,6 +11,10 @@ import {
   View,
 } from 'react-native';
 import { api } from '../../services/api';
+import {
+  canRequestCourseRegistration,
+  isLiveActivity,
+} from '../../util/courseRegistration';
 
 export type CourseLite = {
   id: string;
@@ -77,9 +81,20 @@ export default function CourseDialog({
   initialTab = 'head',
   durationOnlyDetails = false,
 }: Props) {
-  // default tabs: show all (register only if authenticated)
-  const defaultTabs: Tabs[] = ['head', 'details', 'poster', ...(isAuthenticated ? (['register'] as const) : [])];
-  const tabs: Tabs[] = enabledTabs?.length ? enabledTabs : defaultTabs;
+  const registrationEnabled = canRequestCourseRegistration(
+    isAuthenticated,
+    course?.live,
+  );
+  // Registration is available only for authenticated users viewing a live activity.
+  const defaultTabs: Tabs[] = [
+    'head',
+    'details',
+    'poster',
+    ...(registrationEnabled ? (['register'] as const) : []),
+  ];
+  const tabs: Tabs[] = (enabledTabs?.length ? enabledTabs : defaultTabs).filter(
+    candidate => candidate !== 'register' || registrationEnabled,
+  );
 
   const [tab, setTab] = useState<Tabs>(initialTab);
   const [mode, setMode] = useState<'onsite' | 'online'>('onsite');
@@ -110,6 +125,10 @@ export default function CourseDialog({
   );
 
   const handleRegister = async () => {
+    if (!isLiveActivity(c.live)) {
+      Alert.alert('التسجيل غير متاح', 'يمكن إرسال طلبات التسجيل للدورات المباشرة فقط.');
+      return;
+    }
     if (!token) {
       Alert.alert('مطلوب تسجيل الدخول', 'الرجاء تسجيل الدخول لإرسال طلب التسجيل.');
       return;
@@ -144,7 +163,7 @@ export default function CourseDialog({
     { k: 'head' as const, t: 'العناوين' },
     { k: 'details' as const, t: 'التفاصيل' },
     { k: 'poster' as const, t: 'الملصق' },
-    ...(isAuthenticated ? [{ k: 'register' as const, t: 'التسجيل' }] : []),
+    ...(registrationEnabled ? [{ k: 'register' as const, t: 'التسجيل' }] : []),
   ].filter((t) => tabs.includes(t.k));
 
   return (

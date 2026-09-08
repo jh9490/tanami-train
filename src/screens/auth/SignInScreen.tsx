@@ -102,7 +102,7 @@ function CountryCodePicker({
             style={{
               textAlign: 'center',
               fontFamily: 'NotoKufiArabic-Bold',
-              color: authColors.text,
+              color: authColors.modalText,
               marginBottom: 8,
               fontSize: 16,
             }}
@@ -133,7 +133,7 @@ function CountryCodePicker({
                     <Text
                       style={{
                         fontFamily: 'NotoKufiArabic-Regular',
-                        color: authColors.text,
+                        color: authColors.modalText,
                         marginRight: 8,
                       }}
                     >
@@ -143,7 +143,7 @@ function CountryCodePicker({
                   <Text
                     style={{
                       fontFamily: 'NotoKufiArabic-Bold',
-                      color: authColors.text,
+                      color: authColors.modalText,
                     }}
                   >
                     +{item.dial}
@@ -156,7 +156,7 @@ function CountryCodePicker({
             onPress={() => setOpen(false)}
             style={{ marginTop: 10, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16 }}
           >
-            <Text style={{ color: authColors.text, fontFamily: 'NotoKufiArabic-Regular' }}>
+            <Text style={{ color: authColors.modalText, fontFamily: 'NotoKufiArabic-Regular' }}>
               إغلاق
             </Text>
           </TouchableOpacity>

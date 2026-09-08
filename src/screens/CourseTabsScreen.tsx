@@ -19,6 +19,7 @@ import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { getYouTubeEmbedUrl } from '../util/youtubeLive';
+import { resolveMediaUrl } from '../util/mediaUrl';
 import CertificatePreviewNami from './components/CertificatePreviewNami';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
@@ -91,9 +92,10 @@ function splitActivityFiles(files: ActivityFile[]) {
   const images: ActivityFile[] = [];
   const docs: ActivityFile[] = [];
   for (const f of files) {
+    const normalizedFile = { ...f, url: resolveMediaUrl(f.url) };
     const m = (f.mime || '').toLowerCase();
-    if (m.startsWith('image/')) images.push(f);
-    else docs.push(f);
+    if (m.startsWith('image/')) images.push(normalizedFile);
+    else docs.push(normalizedFile);
   }
   return { images, docs };
 }
