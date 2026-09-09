@@ -38,6 +38,7 @@ import MyCourses from '../screens/MyCoursesScreen';
 import CourseTabs from '../screens/CourseTabsScreen';
 import MyRegistrationRequests from '../screens/MyRegistrationRequests';
 import MyPhotosScreen from '../screens/MyPhotosScreen';
+import MyCertificatesScreen from '../screens/MyCertificatesScreen';
 import { rtlStyles } from '../theme/rtl';
 import { colors } from '../theme/colors';
 
@@ -89,6 +90,7 @@ export type UserStackParamList = {
   MyCourses: undefined;
   CourseTabs: { courseId: string; title: string } | undefined;
   MyRegistrationRequests: undefined;
+  MyCertificates: undefined;
   OnlineCourses: undefined;
   VerifyCertificateScreen: undefined;
 };
@@ -197,6 +199,11 @@ function UserStack() {
         name="MyRegistrationRequests"
         component={MyRegistrationRequests}
         options={{ title: 'طلباتي' }}
+      />
+      <UserStackNav.Screen
+        name="MyCertificates"
+        component={MyCertificatesScreen}
+        options={{ title: 'شهاداتي' }}
       />
       <UserStackNav.Screen
         name="OnlineCourses"

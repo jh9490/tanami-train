@@ -1,7 +1,7 @@
 // src/context/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 import { api } from '../services/api';
 import { mapAuthError } from '../auth/otp';
@@ -78,17 +78,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     else await AsyncStorage.removeItem(TOKEN_KEY);
   };
 
-  const writeProfileIdToStorage = async (p?: Profile | null) => {
+  const writeProfileIdToStorage = useCallback(async (p?: Profile | null) => {
     const pid = p?.id ?? null;
     if (pid != null) {
       await setStoredProfileId(pid);
     } else {
       await clearStoredProfileId();
     }
-  };
+  }, []);
 
   /** fetch profile and also return it, while syncing storage */
-  const fetchProfileSafe = async (t: string): Promise<Profile | null> => {
+  const fetchProfileSafe = useCallback(async (t: string): Promise<Profile | null> => {
     try {
       const p = await api.getProfile(t);
       const prof = p.profile ?? null;
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await clearStoredProfileId(); // ⬅️ remove stale id if any
       return null;
     }
-  };
+  }, [writeProfileIdToStorage]);
 
   // boot: load token, then /me and /profile, then register FCM if logged in
   useEffect(() => {
@@ -132,7 +132,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
     })();
-  }, []);
+  }, [writeProfileIdToStorage]);
+
+  // Student identity may be linked or repaired by the server after login.
+  // Re-sync it whenever the app returns to the foreground.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active' && token) {
+        fetchProfileSafe(token);
+      }
+    });
+    return () => subscription.remove();
+  }, [fetchProfileSafe, token]);
 
   const signUp = async (
     mobile: string,
@@ -236,6 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const displayName =
     (profile?.fullname_ar && profile.fullname_ar.trim() !== '' ? profile.fullname_ar : null) ??
+    (profile?.fullname_en && profile.fullname_en.trim() !== '' ? profile.fullname_en : null) ??
     (user?.username ?? null);
 
   const value = useMemo(
@@ -253,6 +265,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshProfile,
       displayName,
     }),
+    // The action functions intentionally close over the current auth state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user, token, profile, loading, displayName]
   );
 

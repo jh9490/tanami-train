@@ -29,6 +29,7 @@ import { colors as themeColors } from '../theme/colors';
 import { TANAMI_WHATSAPP_URL } from '../constants/contact';
 import { isLiveActivity } from '../util/courseRegistration';
 import { resolveMediaUrl } from '../util/mediaUrl';
+import { MOBILE_API_URL } from '../services/api';
 
 I18nManager.forceRTL(true);
 
@@ -49,7 +50,7 @@ const COLORS = {
 
 const BASE = 'https://admin.tanamitrain.com';
 const SLIDERS_URL = `${BASE}/api/mobile-app/sliders`;
-const ACTIVITIES_URL = `${BASE}/api/mobile-app/activities`;
+const ACTIVITIES_URL = `${MOBILE_API_URL}/activities`;
 
 type SliderItem = { id: string; image: string; link?: string; title?: string; subtitle?: string; cta?: string };
 type CourseBucketKey = 'current' | 'upcoming';
@@ -522,8 +523,8 @@ export default function HomeScreen() {
         />
         <HomeGridItem
           icon="verified"
-          label="تحقق من شهادة"
-          onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
+          label="شهاداتي"
+          onPress={() => navigation.navigate('UserStack', { screen: 'MyCertificates' })}
         />
       </View>
     </>

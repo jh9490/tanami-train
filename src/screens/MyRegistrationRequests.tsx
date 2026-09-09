@@ -1,5 +1,5 @@
 // src/screens/MyRegistrationRequests.tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -12,25 +12,8 @@ import { api } from '../services/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
-
-type ReqItem = {
-  id: number;
-  user_id: number;
-  activity_id: number;
-  online: 0 | 1;
-  status: 0 | 1 | 2;
-  created_at?: string | null;
-  updated_at?: string | null;
-
-  // NEW (from API actionMyRegistrations):
-  activity_date?: string | null;
-  activity_end_date?: string | null;
-  course?: {
-    id?: number | null;
-    name_ar?: string | null;
-    name_en?: string | null;
-  } | null;
-};
+import { useFocusEffect } from '@react-navigation/native';
+import type { RegistrationRequestItem as ReqItem } from '../types/api';
 
 export default function MyRegistrationRequests() {
   const { token, isAuthenticated } = useAuth();
@@ -70,10 +53,12 @@ export default function MyRegistrationRequests() {
     }
   }, [token]);
 
-  useEffect(() => {
-    if (isAuthenticated) load();
-    else setLoading(false);
-  }, [isAuthenticated, load]);
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated) load();
+      else setLoading(false);
+    }, [isAuthenticated, load]),
+  );
 
   const formatDate = (s?: string | null, withTime = false) => {
     if (!s) return '—';
@@ -177,6 +162,7 @@ export default function MyRegistrationRequests() {
 
                       {/* info */}
           <View style={{ marginTop: 10 }}>
+            <Row label="الدورة" value={item.course?.name_ar || item.course?.name_en} />
             <Row label="النشاط" value={`#${item.activity_id}`} />
             {/* created_at with datetime */}
             <Row label="أنشئ" value={formatDate(item.created_at, true)} />

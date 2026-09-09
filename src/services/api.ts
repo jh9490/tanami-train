@@ -2,18 +2,20 @@
 
 /** Base URLs */
 export const BASE_ROOT = 'https://admin.tanamitrain.com';
-const BASE_URL  = `${BASE_ROOT}/api/mobile-app`;   // mobile-app endpoints
-const BASE      = BASE_ROOT;                       // legacy helpers expect BASE
+export const MOBILE_API_URL = 'https://tanamitrain.com/api/mobile-app';
+const BASE_URL  = MOBILE_API_URL;                  // mobile-app endpoints
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH';
 
 import {
   CoursesResponse,
+  CertificatesResponse,
   GetCourseResponse,
   Phase,
   Profile,
   RegisterPushBody,
   RegisterRequestResponse,
+  RegistrationRequestItem,
   UpdateProfileBody,
 } from '../types/api';
 import { OtpDeliveryMethod } from '../auth/otp';
@@ -50,6 +52,17 @@ function logErr(path: string, e: any) {
 
 /* ------------------------------ Core request ----------------------------- */
 
+export class ApiError extends Error {
+  constructor(
+    public readonly code: string,
+    public readonly status: number,
+    message?: string,
+  ) {
+    super(message || code);
+    this.name = 'ApiError';
+  }
+}
+
 async function request<T>(
   path: string,
   method: HttpMethod = 'GET',
@@ -76,7 +89,8 @@ async function request<T>(
     logRes(path, res.status, json);
 
     if (!res.ok || (json && json.ok === false)) {
-      throw new Error(json?.error ?? json?.message ?? `HTTP_${res.status}`);
+      const code = json?.error ?? json?.message ?? `HTTP_${res.status}`;
+      throw new ApiError(code, res.status, json?.message ?? code);
     }
     return json as T;
   } catch (e: any) {
@@ -198,8 +212,16 @@ export const api = {
     ),
 
   // Courses
-  fetchCourses: (token: string, mobile: string, phase: Phase = 'all') =>
-    request<CoursesResponse>('my-courses', 'POST', { mobile, phase }, token),
+  fetchCourses: (token: string, phase: Phase = 'all', mobile?: string | null) =>
+    request<CoursesResponse>(
+      'my-courses',
+      'POST',
+      mobile ? { mobile, phase } : { phase },
+      token,
+    ),
+
+  fetchCertificates: (token: string) =>
+    request<CertificatesResponse>('my-certificates', 'GET', undefined, token),
 
   async fetchCourseById(token: string | null | undefined, id: string | number) {
     const headers: Record<string,string> = { Accept: 'application/json' };
@@ -286,5 +308,5 @@ export const api = {
     request<RegisterRequestResponse>('register-request', 'POST', { activity_id, online }, token),
 
   myRegistrations: (token: string) =>
-    request<{ ok: true; items: any[] }>('my-registrations', 'GET', undefined, token),
+    request<{ ok: true; items: RegistrationRequestItem[] }>('my-registrations', 'GET', undefined, token),
 };

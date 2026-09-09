@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -15,6 +14,7 @@ import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
 import { TANAMI_WHATSAPP_URL } from '../constants/contact';
 import { openLinkSafe } from '../util/Linker';
+import { useFocusEffect } from '@react-navigation/native';
 
 type Phase = 'current' | 'upcoming' | 'previous';
 
@@ -23,25 +23,17 @@ export default function MyCoursesScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CourseItem[]>([]);
 
-  const { user, token } = useAuth();
-  const mobile: string | undefined = user?.username || undefined;
+  const { profile, token } = useAuth();
   const [studentId, setStudentId] = useState<number | null>(null);
 
   const fetchCourses = useCallback(
     async (phase: Phase) => {
       if (!token) return;
-      if (!mobile) {
-        Alert.alert('تنبيه', 'لا يوجد رقم جوال للمستخدم.');
-        setData([]);
-        return;
-      }
 
       try {
         setLoading(true);
         setData([]);
-        if (!user?.username)
-          return
-        const json = await api.fetchCourses(token, user?.username, phase);
+        const json = await api.fetchCourses(token, phase, profile?.mobile);
 
         if (json.result === 1) {
           setData(json.items || []);
@@ -56,12 +48,14 @@ export default function MyCoursesScreen({ navigation }: any) {
         setLoading(false);
       }
     },
-    [token, mobile, user?.username]
+    [token, profile?.mobile]
   );
 
-  useEffect(() => {
-    fetchCourses(tab);
-  }, [tab, fetchCourses]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCourses(tab);
+    }, [tab, fetchCourses]),
+  );
 
   const TabBtn = ({ value, label }: { value: Phase; label: string }) => (
     <TouchableOpacity

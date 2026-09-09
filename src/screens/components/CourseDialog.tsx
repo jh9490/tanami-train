@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { api } from '../../services/api';
 import {
+  canRequestOnlineRegistration,
   canRequestCourseRegistration,
-  isLiveActivity,
+  registrationErrorMessage,
 } from '../../util/courseRegistration';
 
 export type CourseLite = {
@@ -85,7 +86,7 @@ export default function CourseDialog({
     isAuthenticated,
     course?.live,
   );
-  // Registration is available only for authenticated users viewing a live activity.
+  const onlineEnabled = canRequestOnlineRegistration(course?.live);
   const defaultTabs: Tabs[] = [
     'head',
     'details',
@@ -106,6 +107,7 @@ export default function CourseDialog({
   useEffect(() => {
     if (!visible) return;
     setTab(tabs.includes(initialTab) ? initialTab : tabs[0]);
+    setMode('onsite');
   // Reset the dialog for each newly opened course. The enabled tab list is
   // supplied declaratively by the caller and does not need to trigger a reset.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,10 +127,6 @@ export default function CourseDialog({
   );
 
   const handleRegister = async () => {
-    if (!isLiveActivity(c.live)) {
-      Alert.alert('التسجيل غير متاح', 'يمكن إرسال طلبات التسجيل للدورات المباشرة فقط.');
-      return;
-    }
     if (!token) {
       Alert.alert('مطلوب تسجيل الدخول', 'الرجاء تسجيل الدخول لإرسال طلب التسجيل.');
       return;
@@ -140,7 +138,7 @@ export default function CourseDialog({
     }
     setSubmitting(true);
     try {
-      const online = mode === 'online' ? 1 : 0;
+      const online = mode === 'online' && onlineEnabled ? 1 : 0;
       const res = await api.registerForActivity(token, activityId, online as 0 | 1);
       const ok = (res as any)?.ok;
       const msg =
@@ -152,7 +150,7 @@ export default function CourseDialog({
       Alert.alert(ok ? 'تم' : 'خطأ', msg);
       if (ok) onClose();
     } catch (e: any) {
-      Alert.alert('خطأ', e?.message || 'تعذر إرسال الطلب.');
+      Alert.alert('تعذر التسجيل', registrationErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
@@ -318,7 +316,7 @@ export default function CourseDialog({
                     >
                       {[
                         { k: 'onsite' as const, t: 'حضوري' },
-                        { k: 'online' as const, t: 'أونلاين' },
+                        ...(onlineEnabled ? [{ k: 'online' as const, t: 'أونلاين' }] : []),
                       ].map(({ k, t }) => {
                         const active = mode === k;
                         return (

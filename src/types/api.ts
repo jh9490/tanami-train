@@ -91,6 +91,8 @@ export interface RegisterPushBody  {
 /** New: Profile type used by GET/UPDATE profile */
 export interface Profile {
   id: number;
+  student_id?: number | null;
+  mobile?: string | null;
   fullname_ar: string | null;
   fullname_en: string | null;
   email: string | null;
@@ -119,4 +121,77 @@ export type UpdateProfileBody = Partial<{
 
 
 export type RegisterRequestBody = { activity_id: number; online?: 0|1 };
-export type RegisterRequestResponse = { ok: true; request: { id:number; user_id:number; activity_id:number; online:number; status:number } } | { ok:false; error:string };
+export type RegisterRequestResponse = {
+  ok: true;
+  message?: string;
+  request: {
+    id: number;
+    user_id: number;
+    activity_id: number;
+    online: number;
+    status: number;
+  };
+};
+
+export interface RegistrationRequestItem {
+  id: number;
+  user_id: number;
+  activity_id: number;
+  online: 0 | 1;
+  status: 0 | 1 | 2;
+  created_at?: string | null;
+  updated_at?: string | null;
+  activity_date?: string | null;
+  activity_end_date?: string | null;
+  course?: {
+    id?: number | null;
+    name_ar?: string | null;
+    name_en?: string | null;
+  } | null;
+}
+
+export interface CertificateIssue {
+  id?: number;
+  certificate_id?: string | null;
+  serial?: string | null;
+  date?: string | null;
+  grade?: string | null;
+  status?: number | null;
+  language?: string | null;
+  url?: string | null;
+}
+
+export interface HistoricalCertificateItem {
+  id: number;
+  source: 'activity' | 'legacy_course';
+  activity_id: number | null;
+  course_id?: number | null;
+  certificate_id?: string | null;
+  serial?: string | null;
+  date?: string | null;
+  grade?: string | null;
+  status?: number | null;
+  course_name_ar?: string | null;
+  course_name_en?: string | null;
+  hours?: number | null;
+  course?: {
+    id?: number | null;
+    name_ar?: string | null;
+    name_en?: string | null;
+    hours?: number | null;
+  } | null;
+  activity?: {
+    id?: number | null;
+    course_name_ar?: string | null;
+    course_name_en?: string | null;
+    hours?: number | null;
+  } | null;
+  issues?: CertificateIssue[];
+}
+
+export interface CertificatesResponse {
+  ok: true;
+  count?: number;
+  items?: HistoricalCertificateItem[];
+  certificates?: HistoricalCertificateItem[];
+}

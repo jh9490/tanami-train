@@ -429,8 +429,8 @@ export default function CourseTabsScreen({ route }: any) {
     title: titleFromNav,
     liveUrl,
   } = route.params ?? {};
-  const { token, user } = useAuth();
-  const studentId = studentIdParam ?? user?.id;
+  const { token, profile } = useAuth();
+  const studentId = studentIdParam ?? profile?.student_id;
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
