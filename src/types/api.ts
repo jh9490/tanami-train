@@ -124,7 +124,7 @@ export type RegisterRequestBody = { activity_id: number; online?: 0|1 };
 export type RegisterRequestResponse = {
   ok: true;
   message?: string;
-  request: {
+  request?: {
     id: number;
     user_id: number;
     activity_id: number;

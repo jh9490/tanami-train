@@ -3,7 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, AppState } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 import { mapAuthError } from '../auth/otp';
 import { getOrCreateDeviceId } from '../util/deviceId';
 import type { Profile } from '../types/api';
@@ -39,6 +39,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   refreshMe: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshAccountData: () => Promise<void>;
 
   // convenience
   displayName: string | null;
@@ -72,11 +73,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // ---- helpers to keep storage in sync ----
-  const persistToken = async (t: string | null) => {
+  const persistToken = useCallback(async (t: string | null) => {
     setToken(t);
     if (t) await AsyncStorage.setItem(TOKEN_KEY, t);
     else await AsyncStorage.removeItem(TOKEN_KEY);
-  };
+  }, []);
 
   const writeProfileIdToStorage = useCallback(async (p?: Profile | null) => {
     const pid = p?.id ?? null;
@@ -95,12 +96,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(prof);
       await writeProfileIdToStorage(prof); // ⬅️ keep storage in sync
       return prof;
-    } catch {
+    } catch (error) {
       setProfile(null);
       await clearStoredProfileId(); // ⬅️ remove stale id if any
+      if (error instanceof ApiError && error.status === 401) {
+        await persistToken(null);
+        setUser(null);
+      }
       return null;
     }
-  }, [writeProfileIdToStorage]);
+  }, [persistToken, writeProfileIdToStorage]);
+
+  const clearSession = useCallback(async () => {
+    await persistToken(null);
+    setUser(null);
+    setProfile(null);
+    await clearStoredProfileId();
+  }, [persistToken]);
+
+  const syncAccountData = useCallback(async (t: string): Promise<Profile | null> => {
+    try {
+      const [profileResponse] = await api.refreshAccountData(t);
+      const prof = profileResponse.profile ?? null;
+      setProfile(prof);
+      await writeProfileIdToStorage(prof);
+      return prof;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        await clearSession();
+        throw error;
+      }
+      return null;
+    }
+  }, [clearSession, writeProfileIdToStorage]);
 
   // boot: load token, then /me and /profile, then register FCM if logged in
   useEffect(() => {
@@ -113,37 +141,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const me = await api.me(t);
         setUser(me.user as User);
 
-        let prof: Profile | null = null;
-        try {
-          const p = await api.getProfile(t);
-          prof = p.profile ?? null;
-          setProfile(prof);
-          await writeProfileIdToStorage(prof); // ⬅️ store profile id on boot
-        } catch {
-          setProfile(null);
-          await clearStoredProfileId();
-        }
+        const prof = await syncAccountData(t);
 
         const profileId = prof?.id ?? null;
         if (profileId) await registerFcmForProfile(profileId);
-      } catch {
-        // ignore
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          await clearSession();
+        }
       } finally {
         setLoading(false);
       }
     })();
-  }, [writeProfileIdToStorage]);
+  }, [clearSession, syncAccountData]);
 
   // Student identity may be linked or repaired by the server after login.
   // Re-sync it whenever the app returns to the foreground.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
       if (nextState === 'active' && token) {
-        fetchProfileSafe(token);
+        syncAccountData(token).catch(() => undefined);
       }
     });
     return () => subscription.remove();
-  }, [fetchProfileSafe, token]);
+  }, [syncAccountData, token]);
 
   const signUp = async (
     mobile: string,
@@ -165,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await persistToken(res.access_token);
       setUser(res.user as User);
 
-      const prof = await fetchProfileSafe(res.access_token); // ⬅️ writes storage inside
+      const prof = await syncAccountData(res.access_token);
       const profileId = prof?.id ?? null;
 
       // register after verification (user is now logged in)
@@ -182,7 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await persistToken(res.access_token);
       setUser(res.user as User);
 
-      const prof = await fetchProfileSafe(res.access_token); // ⬅️ writes storage inside
+      const prof = await syncAccountData(res.access_token);
       const profileId = prof?.id ?? null;
 
       // register after login
@@ -193,7 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       if (token) await api.logout(token);
     } catch {
@@ -205,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await clearStoredProfileId(); // ⬅️ remove profile id for ACK readers
       // optional: keep guest registration handled in App.tsx
     }
-  };
+  }, [persistToken, token]);
 
   const refreshMe = async () => {
     if (!token) return;
@@ -224,6 +245,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) return;
     await fetchProfileSafe(token); // ⬅️ keeps storage aligned as well
   };
+
+  const refreshAccountData = useCallback(async () => {
+    if (!token) return;
+    await syncAccountData(token);
+  }, [syncAccountData, token]);
 
   // re-register when FCM token refreshes (if logged in)
   useEffect(() => {
@@ -263,6 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signOut,
       refreshMe,
       refreshProfile,
+      refreshAccountData,
       displayName,
     }),
     // The action functions intentionally close over the current auth state.

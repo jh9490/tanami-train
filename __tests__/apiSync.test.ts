@@ -60,4 +60,21 @@ describe('mobile synchronization API', () => {
       status: 422,
     });
   });
+
+  it('refreshes all account resources in parallel with the bearer token', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true, profile: null }))
+      .mockResolvedValueOnce(jsonResponse(200, { result: 1, items: [] }))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true, items: [] }))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true, items: [] }));
+
+    await api.refreshAccountData('token-123');
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      `${MOBILE_API_URL}/profile`,
+      `${MOBILE_API_URL}/my-courses`,
+      `${MOBILE_API_URL}/my-certificates`,
+      `${MOBILE_API_URL}/my-registrations`,
+    ]);
+  });
 });

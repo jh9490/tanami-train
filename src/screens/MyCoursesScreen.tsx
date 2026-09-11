@@ -5,9 +5,10 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  RefreshControl,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 import { CourseItem } from '../types/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
@@ -23,7 +24,7 @@ export default function MyCoursesScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CourseItem[]>([]);
 
-  const { profile, token } = useAuth();
+  const { token, signOut } = useAuth();
   const [studentId, setStudentId] = useState<number | null>(null);
 
   const fetchCourses = useCallback(
@@ -33,7 +34,7 @@ export default function MyCoursesScreen({ navigation }: any) {
       try {
         setLoading(true);
         setData([]);
-        const json = await api.fetchCourses(token, phase, profile?.mobile);
+        const json = await api.fetchCourses(token, phase);
 
         if (json.result === 1) {
           setData(json.items || []);
@@ -44,11 +45,12 @@ export default function MyCoursesScreen({ navigation }: any) {
       } catch (err) {
         console.error('fetchCourses error', err);
         setData([]);
+        if (err instanceof ApiError && err.status === 401) await signOut();
       } finally {
         setLoading(false);
       }
     },
-    [token, profile?.mobile]
+    [signOut, token]
   );
 
   useFocusEffect(
@@ -110,6 +112,14 @@ export default function MyCoursesScreen({ navigation }: any) {
         ) : (
           <FlatList
             data={data}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={() => fetchCourses(tab)}
+                tintColor={colors.gold}
+                colors={[colors.gold]}
+              />
+            }
             keyExtractor={(it, idx) =>
               String(it.registration_id ?? it.activity?.id ?? it.course?.id ?? idx)
             }

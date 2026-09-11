@@ -29,7 +29,6 @@ import { colors as themeColors } from '../theme/colors';
 import { TANAMI_WHATSAPP_URL } from '../constants/contact';
 import { isLiveActivity } from '../util/courseRegistration';
 import { resolveMediaUrl } from '../util/mediaUrl';
-import { MOBILE_API_URL } from '../services/api';
 
 I18nManager.forceRTL(true);
 
@@ -50,7 +49,7 @@ const COLORS = {
 
 const BASE = 'https://admin.tanamitrain.com';
 const SLIDERS_URL = `${BASE}/api/mobile-app/sliders`;
-const ACTIVITIES_URL = `${MOBILE_API_URL}/activities`;
+const ACTIVITIES_URL = `${BASE}/api/mobile-app/activities`;
 
 type SliderItem = { id: string; image: string; link?: string; title?: string; subtitle?: string; cta?: string };
 type CourseBucketKey = 'current' | 'upcoming';
@@ -354,7 +353,7 @@ export default function HomeScreen() {
 
   const { width: windowWidth } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isAuthenticated, displayName, token } = useAuth();
+  const { isAuthenticated, displayName, token, signOut, refreshAccountData } = useAuth();
 
   const happeningItems = useMemo(
     () => [...courses.current, ...courses.upcoming].slice(0, 12),
@@ -437,8 +436,26 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchAll();
-  }, [fetchAll]);
+    Promise.all([
+      fetchAll(),
+      ...(token ? [refreshAccountData()] : []),
+    ]).catch(() => undefined);
+  }, [fetchAll, refreshAccountData, token]);
+
+  const removeActivity = useCallback((activityId: string) => {
+    setCourses(previous => ({
+      current: previous.current.filter(item => item.id !== activityId),
+      upcoming: previous.upcoming.filter(item => item.id !== activityId),
+    }));
+  }, []);
+
+  const disableOnlineForActivity = useCallback((activityId: string) => {
+    setCourses(previous => ({
+      current: previous.current.map(item => item.id === activityId ? { ...item, live: false } : item),
+      upcoming: previous.upcoming.map(item => item.id === activityId ? { ...item, live: false } : item),
+    }));
+    setSelectedCourse(previous => previous?.id === activityId ? { ...previous, live: false } : previous);
+  }, []);
 
   const getCourseStatusLabel = (item: CourseLite) => {
     if (item.live) return 'مباشر';
@@ -744,6 +761,15 @@ export default function HomeScreen() {
         onClose={() => setDetailsOpen(false)}
         isAuthenticated={isAuthenticated}
         token={token}
+        onRegistrationChanged={async () => {
+          await Promise.all([refreshAccountData(), fetchAll()]);
+        }}
+        onActivityUnavailable={async (activityId, reason) => {
+          if (reason === 'deleted') removeActivity(activityId);
+          else await fetchAll();
+        }}
+        onOnlineUnavailable={disableOnlineForActivity}
+        onUnauthorized={signOut}
       />
     </GestureHandlerRootView>
   );

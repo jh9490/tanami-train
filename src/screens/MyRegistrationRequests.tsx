@@ -1,5 +1,5 @@
 // src/screens/MyRegistrationRequests.tsx
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
@@ -16,10 +16,22 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { RegistrationRequestItem as ReqItem } from '../types/api';
 
 export default function MyRegistrationRequests() {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, signOut } = useAuth();
   const [items, setItems] = useState<ReqItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const pendingIds = useRef<Set<number>>(new Set());
+
+  const applyLatest = useCallback(async (latest: ReqItem[]) => {
+    const pending = latest.filter(item => item.status === 0);
+    const latestPendingIds = new Set(pending.map(item => item.id));
+    const requestLeftPending = [...pendingIds.current].some(id => !latestPendingIds.has(id));
+    pendingIds.current = latestPendingIds;
+    setItems(pending);
+    if (requestLeftPending && token) {
+      await api.fetchCourses(token, 'all');
+    }
+  }, [token]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -28,17 +40,21 @@ export default function MyRegistrationRequests() {
       const res = await api.myRegistrations(token);
       console.log(res);
       if (res?.ok && Array.isArray(res.items)) {
-        setItems(res.items as ReqItem[]);
+        await applyLatest(res.items as ReqItem[]);
       } else {
         setItems([]);
         Alert.alert('تعذّر التحميل', 'حاول مجددًا لاحقًا.');
       }
     } catch (e: any) {
+      if (e instanceof ApiError && e.status === 401) {
+        await signOut();
+        return;
+      }
       Alert.alert('خطأ في الاتصال', e?.message || 'يرجى المحاولة مرة أخرى.');
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [applyLatest, signOut, token]);
 
   const onRefresh = useCallback(async () => {
     if (!token) return;
@@ -46,12 +62,14 @@ export default function MyRegistrationRequests() {
     try {
       const res = await api.myRegistrations(token);
       if (res?.ok && Array.isArray(res.items)) {
-        setItems(res.items as ReqItem[]);
+        await applyLatest(res.items as ReqItem[]);
       }
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) await signOut();
     } finally {
       setRefreshing(false);
     }
-  }, [token]);
+  }, [applyLatest, signOut, token]);
 
   useFocusEffect(
     useCallback(() => {

@@ -2,7 +2,7 @@
 
 /** Base URLs */
 export const BASE_ROOT = 'https://admin.tanamitrain.com';
-export const MOBILE_API_URL = 'https://tanamitrain.com/api/mobile-app';
+export const MOBILE_API_URL = `${BASE_ROOT}/api/mobile-app`;
 const BASE_URL  = MOBILE_API_URL;                  // mobile-app endpoints
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH';
@@ -309,4 +309,12 @@ export const api = {
 
   myRegistrations: (token: string) =>
     request<{ ok: true; items: RegistrationRequestItem[] }>('my-registrations', 'GET', undefined, token),
+
+  refreshAccountData: (token: string) =>
+    Promise.all([
+      api.getProfile(token),
+      api.fetchCourses(token, 'all'),
+      api.fetchCertificates(token),
+      api.myRegistrations(token),
+    ]),
 };

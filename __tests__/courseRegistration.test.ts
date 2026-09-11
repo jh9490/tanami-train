@@ -34,6 +34,8 @@ describe('course registration eligibility', () => {
     ['activity_not_found', 'لم يعد هذا النشاط متاحًا.'],
     ['activity_not_open_for_registration', 'هذا النشاط غير مفتوح للتسجيل حاليًا.'],
     ['online_registration_unavailable', 'التسجيل أونلاين غير متاح لهذا النشاط. اختر الحضور المباشر.'],
+    ['activity_id_required', 'تعذر إرسال الطلب بسبب خطأ في بيانات النشاط.'],
+    ['unauthorized', 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.'],
   ])('maps %s to an Arabic validation message', (code, expected) => {
     expect(registrationErrorMessage(new Error(code))).toBe(expected);
   });

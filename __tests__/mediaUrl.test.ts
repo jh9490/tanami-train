@@ -1,34 +1,16 @@
-import { MEDIA_BASE_URL, resolveMediaUrl } from '../src/util/mediaUrl';
+import { resolveMediaUrl } from '../src/util/mediaUrl';
 
 describe('resolveMediaUrl', () => {
-  it('moves API relative media paths to the public media base', () => {
-    expect(resolveMediaUrl('/common/media/sliders/example.jpg')).toBe(
-      `${MEDIA_BASE_URL}/sliders/example.jpg`,
-    );
+  it('uses API media URLs exactly as returned', () => {
+    const url = 'https://tanamitrain.com/tanamiAdmin/common/media/gallery/example.jpg';
+    expect(resolveMediaUrl(url)).toBe(url);
   });
 
-  it('rewrites legacy absolute admin media URLs', () => {
-    expect(
-      resolveMediaUrl('https://admin.tanamitrain.com/common/media/gallery/example.jpg'),
-    ).toBe(`${MEDIA_BASE_URL}/gallery/example.jpg`);
+  it('does not prepend a base URL to relative values', () => {
+    expect(resolveMediaUrl('activities/example.jpg')).toBe('activities/example.jpg');
   });
 
-  it('does not duplicate the public media prefix', () => {
-    expect(
-      resolveMediaUrl('https://tanamitrain.com/tanamiAdmin/common/media/gallery/example.jpg'),
-    ).toBe(`${MEDIA_BASE_URL}/gallery/example.jpg`);
-  });
-
-  it('resolves bare media paths', () => {
-    expect(resolveMediaUrl('activities/example.jpg')).toBe(
-      `${MEDIA_BASE_URL}/activities/example.jpg`,
-    );
-  });
-
-  it('preserves unrelated absolute URLs and empty values', () => {
-    expect(resolveMediaUrl('https://cdn.example.com/example.jpg')).toBe(
-      'https://cdn.example.com/example.jpg',
-    );
+  it('preserves empty values', () => {
     expect(resolveMediaUrl(null)).toBe('');
   });
 });

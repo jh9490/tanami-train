@@ -10,7 +10,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 import type { HistoricalCertificateItem } from '../types/api';
 import { colors } from '../theme/colors';
 import AppLoading from './components/AppLoading';
@@ -36,7 +36,7 @@ const certificateSerial = (item: HistoricalCertificateItem) =>
   null;
 
 export default function MyCertificatesScreen() {
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, signOut } = useAuth();
   const [items, setItems] = useState<HistoricalCertificateItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,12 +52,16 @@ export default function MyCertificatesScreen() {
       const certificates = response.items ?? response.certificates ?? [];
       setItems(Array.isArray(certificates) ? certificates : []);
     } catch (error: any) {
+      if (error instanceof ApiError && error.status === 401) {
+        await signOut();
+        return;
+      }
       Alert.alert('تعذّر تحميل الشهادات', error?.message || 'يرجى المحاولة مرة أخرى.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token]);
+  }, [signOut, token]);
 
   useFocusEffect(
     useCallback(() => {
