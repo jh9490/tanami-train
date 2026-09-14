@@ -30,7 +30,7 @@ The app utilizes **React Navigation v7** with multiple nested stacks and bottom 
 ## 3. State Management
 - **Local/Global State**: Relies entirely on the native **React Context API**, specifically utilizing `AuthContext` as the global provider to track `user`, `profile`, and `isAuthenticated` states.
 - **Third-Party Avoidance**: There are no external global state managers (like Redux, MobX, or Zustand) present in the package manifest.
-- **Persistence**: Managed uniformly through `@react-native-async-storage/async-storage` for persisting user session tokens and caching requirements. 
+- **Current persistence**: Managed through `@react-native-async-storage/async-storage`; feature 008 plans a one-way migration of access tokens to OS-protected storage while keeping only non-secret cache and identity metadata in AsyncStorage.
 
 ## 4. Key API Services
 The application wraps the native `fetch` API inside `src/services/api.ts` with custom debugging utilities, error interception, and authorization header management:
@@ -56,3 +56,10 @@ There are no highly outdated foundational packages identified. The structure ind
 
 - **Android**: English CV generation uses a small native bridge in `android/app/src/main/java/com/tanamitrain/cv/` backed by ML Kit on-device translation. Local model preparation may occur on first use, but CV text is not sent to a TanamiTrain backend translation endpoint.
 - **iOS**: The current increment exposes an explicit unsupported-path stub so the app can explain that English generation is unavailable on iOS without breaking the stable Arabic flow.
+
+## 7. Phone-First Onboarding
+
+- Feature 008 adds a route-scoped trainee-choice/phone/OTP/password-completion flow under the existing authentication navigation. The new/previous-trainee choice is informational only and is not stored or sent to the API.
+- `src/context/AuthContext.tsx` remains the single authenticated state owner and will atomically replace one onboarding Bootstrap snapshot for profile, course history, certificates, and registration requests.
+- Access tokens use iOS Keychain/Android Keystore through exact-pinned `react-native-keychain`; OTPs, passwords, and onboarding session tokens are never persisted.
+- Existing guest navigation and legacy authentication/data endpoints remain available behind the rollout gate.

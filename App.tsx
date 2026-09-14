@@ -19,10 +19,11 @@ import { getOrCreateDeviceId } from './src/util/deviceId';
 import { useAuth } from './src/context/AuthContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { configureAppRTL, rtlStyles } from './src/theme/rtl';
+import { HISTORY_LINK_STATUS_CHANGED_EVENT } from './src/constants/onboarding';
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
-  const { user, profile, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated, refreshBootstrap } = useAuth();
 
   const appendStyleDefault = (Component: any, stylePatch: object) => {
     Component.defaultProps = Component.defaultProps || {};
@@ -94,6 +95,12 @@ const App = () => {
     let cleanup = () => {};
     if (!showSplash) {
       (async () => {
+        const handleNotificationData = async (data: Record<string, string>) => {
+          if (data.event === HISTORY_LINK_STATUS_CHANGED_EVENT) {
+            await refreshBootstrap();
+          }
+        };
+
         cleanup = await initNotifications({
           // fires on first token + any refresh
           onToken: async (token) => {
@@ -111,8 +118,10 @@ const App = () => {
               console.log('registerPushToken failed:', e);
             }
           },
-          onOpen: (data) => {
+          onMessage: handleNotificationData,
+          onOpen: async (data) => {
             console.log('Opened from notification:', data);
+            await handleNotificationData(data);
             // Example deep link:
             // if (data.screen === 'CourseTabs' && data.activityId) {
             //   navRef?.navigate('CourseTabs', { activityId: Number(data.activityId) });
@@ -128,7 +137,7 @@ const App = () => {
       })();
     }
     return () => cleanup();
-  }, [showSplash, isAuthenticated, profile?.id, user?.id]);
+  }, [showSplash, isAuthenticated, profile?.id, refreshBootstrap, user?.id]);
 
   return (
     <GestureHandlerRootView style={[{ flex: 1 }, rtlStyles.screen]}>

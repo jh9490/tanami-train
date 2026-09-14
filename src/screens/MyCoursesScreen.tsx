@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,56 +8,25 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { api, ApiError } from '../services/api';
 import { CourseItem } from '../types/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
 import { TANAMI_WHATSAPP_URL } from '../constants/contact';
 import { openLinkSafe } from '../util/Linker';
-import { useFocusEffect } from '@react-navigation/native';
 
 type Phase = 'current' | 'upcoming' | 'previous';
 
 export default function MyCoursesScreen({ navigation }: any) {
   const [tab, setTab] = useState<Phase>('current');
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<CourseItem[]>([]);
-
-  const { token, signOut } = useAuth();
-  const [studentId, setStudentId] = useState<number | null>(null);
-
-  const fetchCourses = useCallback(
-    async (phase: Phase) => {
-      if (!token) return;
-
-      try {
-        setLoading(true);
-        setData([]);
-        const json = await api.fetchCourses(token, phase);
-
-        if (json.result === 1) {
-          setData(json.items || []);
-          setStudentId(json.student?.id ?? null);
-
-        }
-        else setData([]);
-      } catch (err) {
-        console.error('fetchCourses error', err);
-        setData([]);
-        if (err instanceof ApiError && err.status === 401) await signOut();
-      } finally {
-        setLoading(false);
-      }
-    },
-    [signOut, token]
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchCourses(tab);
-    }, [tab, fetchCourses]),
-  );
+  const {
+    courses,
+    bootstrapProfile,
+    bootstrapLoading,
+    refreshBootstrap,
+  } = useAuth();
+  const data = courses[tab];
+  const studentId = bootstrapProfile?.student_id ?? null;
 
   const TabBtn = ({ value, label }: { value: Phase; label: string }) => (
     <TouchableOpacity
@@ -107,15 +76,15 @@ export default function MyCoursesScreen({ navigation }: any) {
 
       {/* list */}
       <View style={styles.listWrap}>
-        {loading ? (
+        {bootstrapLoading && data.length === 0 ? (
           <AppLoading style={{ backgroundColor: 'transparent' }} />
         ) : (
           <FlatList
             data={data}
             refreshControl={
               <RefreshControl
-                refreshing={loading}
-                onRefresh={() => fetchCourses(tab)}
+                refreshing={bootstrapLoading}
+                onRefresh={() => refreshBootstrap().catch(() => undefined)}
                 tintColor={colors.gold}
                 colors={[colors.gold]}
               />

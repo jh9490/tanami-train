@@ -24,13 +24,37 @@ import { OtpDeliveryMethod } from '../auth/otp';
 
 const DEBUG = true; // flip to false in prod
 
+const SECRET_LOG_KEYS = new Set([
+  'authorization',
+  'access_token',
+  'session_token',
+  'password',
+  'current_password',
+  'new_password',
+  'code',
+  'otp',
+  'token',
+]);
+
+function redactForLog(value: any): any {
+  if (Array.isArray(value)) return value.map(redactForLog);
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      SECRET_LOG_KEYS.has(key.toLowerCase()) ? '[REDACTED]' : redactForLog(entry),
+    ]),
+  );
+}
+
 function logReq(path: string, method: string, body?: any, token?: string) {
   if (!DEBUG) return;
   const hasToken = Boolean(token);
   console.log(
     `%c[API →] ${method} ${path}`,
     'color:#0b7285;font-weight:bold',
-    '\nbody:', body ?? {},
+    '\nbody:', redactForLog(body ?? {}),
     hasToken ? '\n(Authorization: Bearer ...)' : ''
   );
 }
@@ -41,7 +65,7 @@ function logRes(path: string, status: number, json: any) {
   console[ok ? 'log' : 'warn'](
     `%c[API ←] ${status} ${path}`,
     ok ? 'color:#2b8a3e;font-weight:bold' : 'color:#d9480f;font-weight:bold',
-    '\njson:', json
+    '\njson:', redactForLog(json)
   );
 }
 

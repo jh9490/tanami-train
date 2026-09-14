@@ -1,14 +1,11 @@
 // src/navigation/AppNavigator.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { I18nManager, StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-/* Providers */
-import { AuthProvider } from '../context/AuthContext';
-
 /* Screens */
 import HomeScreen from '../screens/HomeScreen';
 import CoursesScreen from '../screens/CoursesScreen';
@@ -25,6 +22,12 @@ import SignInScreen from '../screens/auth/SignInScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import VerifyScreen from '../screens/auth/VerifyScreen';
+import AccountCompletionScreen from '../screens/onboarding/AccountCompletionScreen';
+import { OnboardingFlowProvider } from '../screens/onboarding/OnboardingFlowProvider';
+import OtpVerificationScreen from '../screens/onboarding/OtpVerificationScreen';
+import PhoneEntryScreen from '../screens/onboarding/PhoneEntryScreen';
+import TraineeTypeScreen from '../screens/onboarding/TraineeTypeScreen';
+import { useAuth } from '../context/AuthContext';
 
 /* Account/Settings */
 import AccountScreen from '../screens/AccountScreen';
@@ -41,6 +44,7 @@ import MyPhotosScreen from '../screens/MyPhotosScreen';
 import MyCertificatesScreen from '../screens/MyCertificatesScreen';
 import { rtlStyles } from '../theme/rtl';
 import { colors } from '../theme/colors';
+import { getOnboardingEntryRoute } from '../constants/onboarding';
 
 /* ===== Types ===== */
 export type RootStackParamList = {
@@ -74,9 +78,17 @@ export type MenuStackParamList = {
 export type AuthStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
+  PhoneOnboarding: undefined;
   ResetPassword: undefined;
   OtpVerify: { mobile: string; name?: string } | undefined;
   PhoneLoginScreen: undefined;
+};
+
+export type OnboardingStackParamList = {
+  TraineeType: undefined;
+  PhoneEntry: undefined;
+  OtpVerification: undefined;
+  AccountCompletion: undefined;
 };
 
 export type AccountStackParamList = {
@@ -100,6 +112,7 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const MenuStackNav = createNativeStackNavigator<MenuStackParamList>();
 const AuthStackNav = createNativeStackNavigator<AuthStackParamList>();
+const OnboardingStackNav = createNativeStackNavigator<OnboardingStackParamList>();
 const AccountStackNav = createNativeStackNavigator<AccountStackParamList>();
 const UserStackNav = createNativeStackNavigator<UserStackParamList>();
 /* ===== Shared Header Style ===== */
@@ -151,11 +164,45 @@ function MenuStack() {
 }
 
 /* ===== Auth stack ===== */
+function PhoneOnboardingStack() {
+  const { installAccessToken } = useAuth();
+
+  return (
+    <OnboardingFlowProvider
+      onSuccess={result => installAccessToken(result.access_token)}
+    >
+      <OnboardingStackNav.Navigator initialRouteName="TraineeType" screenOptions={headerCommon}>
+        <OnboardingStackNav.Screen
+          name="TraineeType"
+          component={TraineeTypeScreen}
+          options={{ title: 'نوع المتدرب' }}
+        />
+        <OnboardingStackNav.Screen
+          name="PhoneEntry"
+          component={PhoneEntryScreen}
+          options={{ title: 'التحقق من الجوال' }}
+        />
+        <OnboardingStackNav.Screen
+          name="OtpVerification"
+          component={OtpVerificationScreen}
+          options={{ title: 'رمز التحقق', headerBackVisible: false }}
+        />
+        <OnboardingStackNav.Screen
+          name="AccountCompletion"
+          component={AccountCompletionScreen}
+          options={{ title: 'إكمال الحساب', headerBackVisible: false }}
+        />
+      </OnboardingStackNav.Navigator>
+    </OnboardingFlowProvider>
+  );
+}
+
 function AuthStack() {
   return (
     <AuthStackNav.Navigator screenOptions={headerCommon}>
       <AuthStackNav.Screen name="SignIn" component={SignInScreen} options={{ title: 'تسجيل الدخول' }} />
       <AuthStackNav.Screen name="SignUp" component={SignUpScreen} options={{ title: 'إنشاء حساب' }} />
+      <AuthStackNav.Screen name="PhoneOnboarding" component={PhoneOnboardingStack} options={{ headerShown: false }} />
       <AuthStackNav.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'إعادة تعيين كلمة المرور' }} />
       <AuthStackNav.Screen name="OtpVerify" component={VerifyScreen} options={{ title: 'رمز التحقق' }} />
 
@@ -323,14 +370,33 @@ function Root() {
   );
 }
 
-/* ===== App root with AuthProvider + Navigation ===== */
+/* ===== App navigation (AuthProvider is mounted once in index.js) ===== */
 export default function AppNavigator() {
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const { credentialInvalidationVersion } = useAuth();
+  const [navigationReady, setNavigationReady] = useState(false);
+
+  useEffect(() => {
+    if (!navigationReady || credentialInvalidationVersion === 0) return;
+    navigationRef.resetRoot({
+      index: 0,
+      routes: [{
+        name: 'AuthStack',
+        params: { screen: getOnboardingEntryRoute() },
+      }],
+    });
+  }, [credentialInvalidationVersion, navigationReady, navigationRef]);
+
   return (
-    <AuthProvider>
+    <>
       <StatusBar backgroundColor={colors.greenDark} barStyle="light-content" />
-      <NavigationContainer direction="rtl">
+      <NavigationContainer
+        ref={navigationRef}
+        direction="rtl"
+        onReady={() => setNavigationReady(true)}
+      >
         <Root />
       </NavigationContainer>
-    </AuthProvider>
+    </>
   );
 }

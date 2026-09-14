@@ -1,16 +1,12 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-
 import { useAuth } from '../context/AuthContext';
-import { api, ApiError } from '../services/api';
 import type { HistoricalCertificateItem } from '../types/api';
 import { colors } from '../theme/colors';
 import AppLoading from './components/AppLoading';
@@ -36,39 +32,12 @@ const certificateSerial = (item: HistoricalCertificateItem) =>
   null;
 
 export default function MyCertificatesScreen() {
-  const { token, isAuthenticated, signOut } = useAuth();
-  const [items, setItems] = useState<HistoricalCertificateItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const load = useCallback(async (asRefresh = false) => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    asRefresh ? setRefreshing(true) : setLoading(true);
-    try {
-      const response = await api.fetchCertificates(token);
-      const certificates = response.items ?? response.certificates ?? [];
-      setItems(Array.isArray(certificates) ? certificates : []);
-    } catch (error: any) {
-      if (error instanceof ApiError && error.status === 401) {
-        await signOut();
-        return;
-      }
-      Alert.alert('تعذّر تحميل الشهادات', error?.message || 'يرجى المحاولة مرة أخرى.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [signOut, token]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (isAuthenticated) load();
-      else setLoading(false);
-    }, [isAuthenticated, load]),
-  );
+  const {
+    certificates: items,
+    isAuthenticated,
+    bootstrapLoading,
+    refreshBootstrap,
+  } = useAuth();
 
   if (!isAuthenticated) {
     return (
@@ -78,7 +47,7 @@ export default function MyCertificatesScreen() {
     );
   }
 
-  if (loading) {
+  if (bootstrapLoading && items.length === 0) {
     return (
       <ThemedBackground>
         <AppLoading style={styles.loading} />
@@ -93,8 +62,8 @@ export default function MyCertificatesScreen() {
         keyExtractor={(item, index) => String(item.id ?? item.serial ?? index)}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => load(true)}
+            refreshing={bootstrapLoading}
+            onRefresh={() => refreshBootstrap().catch(() => undefined)}
             tintColor={colors.gold}
             colors={[colors.gold]}
           />

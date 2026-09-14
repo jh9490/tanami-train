@@ -195,3 +195,102 @@ export interface CertificatesResponse {
   items?: HistoricalCertificateItem[];
   certificates?: HistoricalCertificateItem[];
 }
+
+/* ----------------------- Phone onboarding v2 ----------------------- */
+
+export type OnboardingNextAction = 'complete_registration';
+export type AuthenticatedLinkStatus = 'linked' | 'unlinked';
+
+export interface OnboardingSessionResponse {
+  ok: true;
+  message: string;
+  session_token: string;
+  expires_in: number;
+  resend_after: number;
+}
+
+export interface OnboardingStartRequest {
+  country_code: string;
+  mobile: string;
+}
+
+export interface OnboardingResendRequest {
+  session_token: string;
+}
+
+export interface OnboardingVerifyRequest {
+  session_token: string;
+  code: string;
+}
+
+export interface OnboardingVerifyResponse {
+  ok: true;
+  verified: true;
+  session_token: string;
+  next_action: OnboardingNextAction;
+}
+
+export interface OnboardingCompleteRequest {
+  session_token: string;
+  password: string;
+}
+
+export interface OnboardingCompleteResponse {
+  ok: true;
+  access_token: string;
+  user_id: number;
+  profile_id: number;
+  student_id: number | null;
+  link_status: AuthenticatedLinkStatus;
+}
+
+export interface BootstrapProfile {
+  id: number;
+  student_id: number | null;
+  fullname_ar: string | null;
+  fullname_en: string | null;
+  mobile: string | null;
+  email: string | null;
+  date_of_birth: string | null;
+}
+
+/** Server-owned, display-only request data; additive fields are allowed. */
+export interface HistoryLinkRequest {
+  [key: string]: unknown;
+}
+
+export interface OnboardingBootstrap {
+  ok: true;
+  link_status: AuthenticatedLinkStatus;
+  profile: BootstrapProfile | null;
+  courses: {
+    upcoming: CourseItem[];
+    current: CourseItem[];
+    previous: CourseItem[];
+  };
+  certificates: HistoricalCertificateItem[];
+  registration_requests: RegistrationRequestItem[];
+  history_link_request: HistoryLinkRequest | null;
+  cache: {
+    version: number;
+    strategy: 'replace';
+  };
+}
+
+/** Raw safe metadata accepted from a failed API response. */
+export interface SafeApiErrorBody {
+  ok?: false;
+  error: string;
+  message?: string;
+  retry_after?: number;
+  attempts_remaining?: number;
+}
+
+/** Normalized error metadata safe to retain in memory and show in the UI. */
+export interface SafeApiErrorMetadata {
+  code: string;
+  status: number;
+  retryAfter: number | null;
+  attemptsRemaining: number | null;
+  retryable: boolean;
+}

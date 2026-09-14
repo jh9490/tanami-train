@@ -26,6 +26,7 @@ import CourseDialog, { CourseLite } from './components/CourseDialog';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors as themeColors } from '../theme/colors';
+import { getOnboardingEntryRoute } from '../constants/onboarding';
 import { TANAMI_WHATSAPP_URL } from '../constants/contact';
 import { isLiveActivity } from '../util/courseRegistration';
 import { resolveMediaUrl } from '../util/mediaUrl';
@@ -353,7 +354,7 @@ export default function HomeScreen() {
 
   const { width: windowWidth } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isAuthenticated, displayName, token, signOut, refreshAccountData } = useAuth();
+  const { isAuthenticated, displayName, token, signOut, refreshBootstrap } = useAuth();
 
   const happeningItems = useMemo(
     () => [...courses.current, ...courses.upcoming].slice(0, 12),
@@ -438,9 +439,9 @@ export default function HomeScreen() {
     setRefreshing(true);
     Promise.all([
       fetchAll(),
-      ...(token ? [refreshAccountData()] : []),
+      ...(token ? [refreshBootstrap()] : []),
     ]).catch(() => undefined);
-  }, [fetchAll, refreshAccountData, token]);
+  }, [fetchAll, refreshBootstrap, token]);
 
   const removeActivity = useCallback((activityId: string) => {
     setCourses(previous => ({
@@ -579,7 +580,9 @@ export default function HomeScreen() {
 
         <PrimaryBtn
           style={{ alignSelf: 'center', marginTop: 16 }}
-          onPress={() => navigation.navigate('AuthStack', { screen: 'SignUp' })}
+          onPress={() => navigation.navigate('AuthStack', {
+            screen: getOnboardingEntryRoute(),
+          })}
         >
           <PrimaryText>إنشاء حساب</PrimaryText>
         </PrimaryBtn>
@@ -762,7 +765,7 @@ export default function HomeScreen() {
         isAuthenticated={isAuthenticated}
         token={token}
         onRegistrationChanged={async () => {
-          await Promise.all([refreshAccountData(), fetchAll()]);
+          await Promise.all([refreshBootstrap(), fetchAll()]);
         }}
         onActivityUnavailable={async (activityId, reason) => {
           if (reason === 'deleted') removeActivity(activityId);

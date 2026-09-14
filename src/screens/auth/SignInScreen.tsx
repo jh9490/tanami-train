@@ -20,6 +20,7 @@ import { digitsOnly, stripLeadingZero, buildE164 } from '../../util/phone';
 import FlagIcon from '../../util/FlagIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedBackground from '../components/ThemedBackground';
+import { getOnboardingEntryRoute } from '../../constants/onboarding';
 
 type Country = { code: string; name: string; dial: string };
 
@@ -272,7 +273,7 @@ const SignInScreen: React.FC<any> = ({ navigation }) => {
 
         <TouchableOpacity
           style={authStyles.actionLink}
-          onPress={() => navigation.navigate('SignUp')}
+          onPress={() => navigation.navigate(getOnboardingEntryRoute())}
         >
           <Text style={authStyles.actionLinkText}>ليس لديك حساب؟ أنشئ حساباً جديداً</Text>
         </TouchableOpacity>

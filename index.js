@@ -8,11 +8,17 @@ import { name as appName } from './app.json';
 import messaging from '@react-native-firebase/messaging';
 import { AuthProvider } from './src/context/AuthContext';  // 👈 add
 import { configureAppRTL } from './src/theme/rtl';
+import { HISTORY_LINK_STATUS_CHANGED_EVENT } from './src/constants/onboarding';
+import { markBootstrapRefreshPending } from './src/storage/bootstrapStorage';
 
 configureAppRTL();
 
 // REQUIRED: background/quit handler (runs in Headless JS)
 messaging().setBackgroundMessageHandler(async remoteMessage => {
+    if (remoteMessage.data?.event === HISTORY_LINK_STATUS_CHANGED_EVENT) {
+      await markBootstrapRefreshPending();
+    }
+
     // Keep it lightweight. If you send "notification" payloads,
     // Android will show them automatically. For data-only, you can
     // post a local notification here if you want.

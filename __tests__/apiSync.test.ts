@@ -77,4 +77,23 @@ describe('mobile synchronization API', () => {
       `${MOBILE_API_URL}/my-registrations`,
     ]);
   });
+
+  it('redacts passwords and access tokens from legacy API diagnostics', async () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        ok: true,
+        access_token: 'server-secret-token',
+        user: { id: 1 },
+      }),
+    );
+
+    await api.login('+963912345678', 'user-secret-password');
+
+    const output = JSON.stringify(logSpy.mock.calls);
+    expect(output).not.toContain('server-secret-token');
+    expect(output).not.toContain('user-secret-password');
+    expect(output).toContain('[REDACTED]');
+    logSpy.mockRestore();
+  });
 });

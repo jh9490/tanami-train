@@ -1,81 +1,27 @@
 // src/screens/MyRegistrationRequests.tsx
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   Text,
   View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { api, ApiError } from '../services/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
-import { useFocusEffect } from '@react-navigation/native';
 import type { RegistrationRequestItem as ReqItem } from '../types/api';
 
 export default function MyRegistrationRequests() {
-  const { token, isAuthenticated, signOut } = useAuth();
-  const [items, setItems] = useState<ReqItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const pendingIds = useRef<Set<number>>(new Set());
-
-  const applyLatest = useCallback(async (latest: ReqItem[]) => {
-    const pending = latest.filter(item => item.status === 0);
-    const latestPendingIds = new Set(pending.map(item => item.id));
-    const requestLeftPending = [...pendingIds.current].some(id => !latestPendingIds.has(id));
-    pendingIds.current = latestPendingIds;
-    setItems(pending);
-    if (requestLeftPending && token) {
-      await api.fetchCourses(token, 'all');
-    }
-  }, [token]);
-
-  const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const res = await api.myRegistrations(token);
-      console.log(res);
-      if (res?.ok && Array.isArray(res.items)) {
-        await applyLatest(res.items as ReqItem[]);
-      } else {
-        setItems([]);
-        Alert.alert('تعذّر التحميل', 'حاول مجددًا لاحقًا.');
-      }
-    } catch (e: any) {
-      if (e instanceof ApiError && e.status === 401) {
-        await signOut();
-        return;
-      }
-      Alert.alert('خطأ في الاتصال', e?.message || 'يرجى المحاولة مرة أخرى.');
-    } finally {
-      setLoading(false);
-    }
-  }, [applyLatest, signOut, token]);
-
-  const onRefresh = useCallback(async () => {
-    if (!token) return;
-    setRefreshing(true);
-    try {
-      const res = await api.myRegistrations(token);
-      if (res?.ok && Array.isArray(res.items)) {
-        await applyLatest(res.items as ReqItem[]);
-      }
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) await signOut();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [applyLatest, signOut, token]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (isAuthenticated) load();
-      else setLoading(false);
-    }, [isAuthenticated, load]),
+  const {
+    registrationRequests,
+    isAuthenticated,
+    bootstrapLoading,
+    refreshBootstrap,
+  } = useAuth();
+  const items = useMemo(
+    () => registrationRequests.filter(item => item.status === 0),
+    [registrationRequests],
   );
 
   const formatDate = (s?: string | null, withTime = false) => {
@@ -138,7 +84,7 @@ export default function MyRegistrationRequests() {
     );
   }
 
-  if (loading) {
+  if (bootstrapLoading && items.length === 0) {
     return (
       <ThemedBackground>
         <AppLoading style={{ backgroundColor: 'transparent' }} />
@@ -155,7 +101,7 @@ export default function MyRegistrationRequests() {
       <FlatList
         data={items}
         keyExtractor={(it) => String(it.id)}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />}
+        refreshControl={<RefreshControl refreshing={bootstrapLoading} onRefresh={() => refreshBootstrap().catch(() => undefined)} tintColor={colors.gold} colors={[colors.gold]} />}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', color: 'rgba(255, 248, 239, 0.72)', fontFamily: 'NotoKufiArabic-Regular', marginTop: 12 }}>
             لا توجد طلبات بعد

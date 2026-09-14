@@ -39,7 +39,15 @@ const norm = (v: string) => {
   return t === '' ? null : t;
 };
 export default function AccountScreen() {
-  const { user, token, signOut, refreshProfile } = useAuth();
+  const {
+    user,
+    token,
+    profile,
+    bootstrapProfile,
+    signOut,
+    refreshProfile,
+    refreshBootstrap,
+  } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
@@ -180,6 +188,7 @@ export default function AccountScreen() {
       setDob(p.date_of_birth ?? '');
 
       await refreshProfile();
+      await refreshBootstrap();
       Alert.alert('تم الحفظ', 'تم إرسال التعديلات للمراجعة. بانتظار اعتماد الإدارة.');
     } catch (e: any) {
       Alert.alert('خطأ', e?.message || 'تعذر حفظ البيانات.');
@@ -226,7 +235,9 @@ export default function AccountScreen() {
           <Field label="رقم الجوال">
             <View style={[styles.input, styles.disabledInput]} accessibilityState={{ disabled: true }}>
               <Icon name="lock-outline" size={18} color="rgba(255, 248, 239, 0.58)" />
-              <Text style={styles.disabledInputText}>{user?.username || '—'}</Text>
+              <Text style={styles.disabledInputText}>
+                {bootstrapProfile?.mobile ?? profile?.mobile ?? user?.username ?? '—'}
+              </Text>
             </View>
             <Text style={styles.disabledHint}>رقم الجوال مرتبط بالحساب ولا يمكن تعديله</Text>
           </Field>
