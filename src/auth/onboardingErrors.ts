@@ -56,6 +56,26 @@ const ERROR_MESSAGES: Record<string, BilingualCopy> = {
     ar: 'يجب ألا تقل كلمة المرور عن 8 أحرف.',
     en: 'The password must be at least 8 characters.',
   },
+  validation_failed: {
+    ar: 'تحقق من بيانات التسجيل المدخلة ثم حاول مجددًا.',
+    en: 'Check the registration details and try again.',
+  },
+  fullname_required: {
+    ar: 'الاسم الكامل بالعربية مطلوب.',
+    en: 'The full name in Arabic is required.',
+  },
+  invalid_email: {
+    ar: 'صيغة البريد الإلكتروني غير صحيحة.',
+    en: 'Enter a valid email address.',
+  },
+  email_already_registered: {
+    ar: 'البريد الإلكتروني مستخدم في حساب آخر.',
+    en: 'This email address is already used by another account.',
+  },
+  invalid_date: {
+    ar: 'تاريخ الميلاد غير صحيح.',
+    en: 'Enter a valid date of birth.',
+  },
   completion_failed: {
     ar: ONBOARDING_COPY.manualRetry.ar,
     en: ONBOARDING_COPY.manualRetry.en,

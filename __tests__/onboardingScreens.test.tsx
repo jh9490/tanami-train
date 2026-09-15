@@ -60,8 +60,11 @@ const otpState = (now = Date.now()): OnboardingFlowState =>
     now,
   });
 
-const completeState = (): OnboardingFlowState =>
-  onboardingReducer(otpState(), {
+const completeState = (traineeType: 'new' | 'previous' = 'previous'): OnboardingFlowState =>
+  onboardingReducer(onboardingReducer(otpState(), {
+    type: 'SET_TRAINEE_TYPE',
+    traineeType,
+  }), {
     type: 'VERIFY_SUCCEEDED',
     response: {
       ok: true,
@@ -77,11 +80,15 @@ describe('phone onboarding screens', () => {
     jest.useRealTimers();
   });
 
-  it('shows two UI-only trainee choices that lead to the same phone step without API calls', async () => {
+  it('stores either trainee choice and leads to the same phone step without API calls', async () => {
     const newNav = navigation();
     let renderer!: ReactTestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = ReactTestRenderer.create(<TraineeTypeScreen navigation={newNav} />);
+      renderer = ReactTestRenderer.create(
+        <OnboardingFlowProvider>
+          <TraineeTypeScreen navigation={newNav} />
+        </OnboardingFlowProvider>,
+      );
     });
 
     await act(async () => renderer.root.findByProps({ testID: 'new-trainee-option' }).props.onPress());
@@ -90,7 +97,11 @@ describe('phone onboarding screens', () => {
 
     const previousNav = navigation();
     await act(async () => {
-      renderer.update(<TraineeTypeScreen navigation={previousNav} />);
+      renderer.update(
+        <OnboardingFlowProvider>
+          <TraineeTypeScreen navigation={previousNav} />
+        </OnboardingFlowProvider>,
+      );
     });
     await act(async () => renderer.root.findByProps({ testID: 'previous-trainee-option' }).props.onPress());
     expect(previousNav.navigate).toHaveBeenCalledWith('PhoneEntry');
@@ -182,7 +193,7 @@ describe('phone onboarding screens', () => {
     await act(async () => renderer.unmount());
   });
 
-  it('shows only a password field after verification and sends no trainee-selection data', async () => {
+  it('shows only password for a previous trainee and submits the trainee type', async () => {
     mockedApi.complete.mockResolvedValue({
       ok: true,
       access_token: 'access-secret',
@@ -211,6 +222,64 @@ describe('phone onboarding screens', () => {
     expect(mockedApi.complete).toHaveBeenCalledWith({
       session_token: 'verified-secret',
       password: 'password-123',
+      trainee_type: 'previous',
+    });
+  });
+
+  it('requires Arabic name and submits all new-trainee profile fields', async () => {
+    mockedApi.complete.mockResolvedValue({
+      ok: true,
+      access_token: 'access-secret',
+      user_id: 1,
+      profile_id: 2,
+      student_id: null,
+      link_status: 'unlinked',
+    });
+    const nav = navigation();
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <OnboardingFlowProvider initialState={completeState('new')}>
+          <AccountCompletionScreen navigation={nav} />
+        </OnboardingFlowProvider>,
+      );
+    });
+
+    expect(renderer.root.findByProps({ testID: 'fullname-ar-input' })).toBeTruthy();
+    expect(renderer.root.findByProps({ testID: 'date-of-birth-button' })).toBeTruthy();
+
+    await act(async () => {
+      renderer.root.findByProps({ testID: 'password-input' }).props.onChangeText('password-123');
+      await renderer.root.findByProps({ testID: 'complete-button' }).props.onPress();
+    });
+    expect(renderer.root.findByProps({ testID: 'completion-error' }).props.children)
+      .toBe('الاسم الكامل بالعربية مطلوب.');
+    expect(mockedApi.complete).not.toHaveBeenCalled();
+
+    await act(async () => {
+      renderer.root.findByProps({ testID: 'fullname-ar-input' }).props.onChangeText('  أحمد محمد  ');
+      renderer.root.findByProps({ testID: 'fullname-en-input' }).props.onChangeText(' Ahmed Mohammed ');
+      renderer.root.findByProps({ testID: 'email-input' }).props.onChangeText(' ahmed@example.com ');
+      renderer.root.findByProps({ testID: 'date-of-birth-button' }).props.onPress();
+    });
+    await act(async () => {
+      renderer.root.findByProps({ testID: 'date-of-birth-picker' }).props.onChange(
+        {},
+        new Date(Date.UTC(1995, 5, 12)),
+      );
+    });
+    await act(async () => {
+      await renderer.root.findByProps({ testID: 'complete-button' }).props.onPress();
+    });
+
+    expect(mockedApi.complete).toHaveBeenCalledWith({
+      session_token: 'verified-secret',
+      password: 'password-123',
+      trainee_type: 'new',
+      fullname_ar: 'أحمد محمد',
+      fullname_en: 'Ahmed Mohammed',
+      email: 'ahmed@example.com',
+      date_of_birth: '1995-06-12',
     });
   });
 
@@ -234,7 +303,7 @@ describe('phone onboarding screens', () => {
           <Text testID="flow-step">{state.step}</Text>
           <TouchableOpacity
             testID="seed-and-complete"
-            onPress={() => complete('password-123')}
+            onPress={() => complete({ password: 'password-123' })}
           />
         </View>
       );

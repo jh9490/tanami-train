@@ -56,6 +56,8 @@ describe('onboarding API', () => {
     ['complete', () => onboardingApi.complete({
       session_token: 'session-secret',
       password: 'password-secret',
+      trainee_type: 'new',
+      fullname_ar: 'اختبار',
     })],
   ])('sends %s as a JSON POST without an idempotency header', async (path, call) => {
     fetchMock.mockResolvedValue(jsonResponse(200, { ok: true }));
@@ -77,6 +79,8 @@ describe('onboarding API', () => {
       expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({
         session_token: 'session-secret',
         password: 'password-secret',
+        trainee_type: 'new',
+        fullname_ar: 'اختبار',
       }));
     }
   });

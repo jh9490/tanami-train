@@ -2,9 +2,15 @@ import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { authStyles } from '../../auth/ui';
 import ThemedBackground from '../components/ThemedBackground';
+import { useOnboardingFlow } from './OnboardingFlowProvider';
+import type { TraineeType } from '../../types/api';
 
 export default function TraineeTypeScreen({ navigation }: any) {
-  const continueToPhone = () => navigation.navigate('PhoneEntry');
+  const { setTraineeType } = useOnboardingFlow();
+  const continueToPhone = (traineeType: TraineeType) => {
+    setTraineeType(traineeType);
+    navigation.navigate('PhoneEntry');
+  };
 
   return (
     <ThemedBackground>
@@ -24,7 +30,7 @@ export default function TraineeTypeScreen({ navigation }: any) {
             testID="new-trainee-option"
             accessibilityRole="button"
             accessibilityLabel="متدرب جديد / New trainee"
-            onPress={continueToPhone}
+            onPress={() => continueToPhone('new')}
             style={authStyles.optionCard}
           >
             <Text style={authStyles.optionTitle}>متدرب جديد</Text>
@@ -35,12 +41,12 @@ export default function TraineeTypeScreen({ navigation }: any) {
             testID="previous-trainee-option"
             accessibilityRole="button"
             accessibilityLabel="متدرب سابق / Previous trainee"
-            onPress={continueToPhone}
+            onPress={() => continueToPhone('previous')}
             style={authStyles.optionCard}
           >
             <Text style={authStyles.optionTitle}>متدرب سابق</Text>
             <Text style={authStyles.optionDescription}>
-              لدي دورات سابقة لدى تنامي. إذا لم تظهر دوراتي بعد إكمال التسجيل، يمكنني التواصل مع الدعم.
+              حضرت دورة واحدة على الاقل  من قبل
             </Text>
           </TouchableOpacity>
         </View>

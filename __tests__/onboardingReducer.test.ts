@@ -33,9 +33,33 @@ describe('onboardingReducer', () => {
     expect(createInitialOnboardingState()).toEqual(
       expect.objectContaining({
         step: 'phone',
+        traineeType: null,
         sessionToken: null,
       }),
     );
+  });
+
+  it('keeps the selected trainee type through phone and OTP verification', () => {
+    let state = onboardingReducer(createInitialOnboardingState(), {
+      type: 'SET_TRAINEE_TYPE',
+      traineeType: 'new',
+    });
+    state = onboardingReducer(state, {
+      type: 'START_SUCCEEDED',
+      response: session,
+      now,
+    });
+    state = onboardingReducer(state, {
+      type: 'VERIFY_SUCCEEDED',
+      response: {
+        ok: true,
+        verified: true,
+        session_token: 'verified-secret',
+        next_action: 'complete_registration',
+      },
+    });
+
+    expect(state.traineeType).toBe('new');
   });
 
   it('retains the immutable payload and key for a manual transient retry', () => {

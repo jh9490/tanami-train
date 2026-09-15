@@ -4,6 +4,7 @@ import type {
   OnboardingStartRequest,
   OnboardingVerifyResponse,
   SafeApiErrorMetadata,
+  TraineeType,
 } from '../types/api';
 
 export type OnboardingStep = 'phone' | 'otp' | 'complete';
@@ -19,6 +20,7 @@ export interface OnboardingStartAttempt {
 
 export interface OnboardingFlowState {
   step: OnboardingStep;
+  traineeType: TraineeType | null;
   countryCode: string;
   mobile: string;
   startAttempt: OnboardingStartAttempt | null;
@@ -34,6 +36,7 @@ export interface OnboardingFlowState {
 export function createInitialOnboardingState(): OnboardingFlowState {
   return {
     step: 'phone',
+    traineeType: null,
     countryCode: '',
     mobile: '',
     startAttempt: null,
@@ -50,6 +53,7 @@ export function createInitialOnboardingState(): OnboardingFlowState {
 export const initialOnboardingState = createInitialOnboardingState();
 
 export type OnboardingAction =
+  | { type: 'SET_TRAINEE_TYPE'; traineeType: TraineeType }
   | { type: 'SET_PHONE_INPUT'; countryCode: string; mobile: string }
   | { type: 'START_SUBMITTING'; payload: OnboardingStartRequest; idempotencyKey: string }
   | { type: 'START_RETRYING' }
@@ -74,6 +78,12 @@ export function onboardingReducer(
   action: OnboardingAction,
 ): OnboardingFlowState {
   switch (action.type) {
+    case 'SET_TRAINEE_TYPE':
+      return {
+        ...state,
+        traineeType: action.traineeType,
+        error: null,
+      };
     case 'SET_PHONE_INPUT':
       return {
         ...state,
@@ -241,5 +251,6 @@ export const canAccessOtpStep = (state: OnboardingFlowState): boolean =>
 
 export const canAccessCompletionStep = (state: OnboardingFlowState): boolean =>
   state.step === 'complete' &&
+  Boolean(state.traineeType) &&
   Boolean(state.sessionToken) &&
   state.nextAction === 'complete_registration';

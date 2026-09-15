@@ -200,6 +200,7 @@ export interface CertificatesResponse {
 
 export type OnboardingNextAction = 'complete_registration';
 export type AuthenticatedLinkStatus = 'linked' | 'unlinked';
+export type TraineeType = 'new' | 'previous';
 
 export interface OnboardingSessionResponse {
   ok: true;
@@ -233,6 +234,11 @@ export interface OnboardingVerifyResponse {
 export interface OnboardingCompleteRequest {
   session_token: string;
   password: string;
+  trainee_type: TraineeType;
+  fullname_ar?: string;
+  fullname_en?: string | null;
+  email?: string | null;
+  date_of_birth?: string | null;
 }
 
 export interface OnboardingCompleteResponse {

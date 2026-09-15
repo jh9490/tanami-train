@@ -1,7 +1,7 @@
 // src/navigation/AppNavigator.tsx
 import React, { useEffect, useState } from 'react';
-import { I18nManager, StatusBar } from 'react-native';
-import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { I18nManager, StatusBar, TouchableOpacity } from 'react-native';
+import { NavigationContainer, useNavigation, useNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -45,6 +45,7 @@ import MyCertificatesScreen from '../screens/MyCertificatesScreen';
 import { rtlStyles } from '../theme/rtl';
 import { colors } from '../theme/colors';
 import { getOnboardingEntryRoute } from '../constants/onboarding';
+import SupportFloatingButton from '../screens/components/SupportFloatingButton';
 
 /* ===== Types ===== */
 export type RootStackParamList = {
@@ -125,6 +126,22 @@ const headerCommon = {
   contentStyle: rtlStyles.screen,
 };
 
+function TraineeTypeBackButton() {
+  const navigation = useNavigation();
+
+  return (
+    <TouchableOpacity
+      testID="trainee-type-back-button"
+      accessibilityRole="button"
+      accessibilityLabel="رجوع"
+      hitSlop={12}
+      onPress={() => navigation.getParent()?.goBack()}
+    >
+      <Icon name="arrow-forward-ios" size={24} color={colors.gold} />
+    </TouchableOpacity>
+  );
+}
+
 /* ===== Menu stack (for “القائمة” tab) ===== */
 function MenuStack() {
   return (
@@ -175,7 +192,10 @@ function PhoneOnboardingStack() {
         <OnboardingStackNav.Screen
           name="TraineeType"
           component={TraineeTypeScreen}
-          options={{ title: 'نوع المتدرب' }}
+          options={{
+            title: 'نوع المتدرب',
+            headerLeft: TraineeTypeBackButton,
+          }}
         />
         <OnboardingStackNav.Screen
           name="PhoneEntry"
@@ -397,6 +417,7 @@ export default function AppNavigator() {
       >
         <Root />
       </NavigationContainer>
+      <SupportFloatingButton />
     </>
   );
 }

@@ -22,19 +22,29 @@ import type {
   OnboardingStartRequest,
   OnboardingVerifyResponse,
   SafeApiErrorMetadata,
+  TraineeType,
 } from '../../types/api';
 import { createIdempotencyKey } from '../../util/idempotencyKey';
+
+export type CompletionDetails = {
+  password: string;
+  fullnameAr?: string;
+  fullnameEn?: string;
+  email?: string;
+  dateOfBirth?: string;
+};
 
 type CompletionSuccessHandler = (result: OnboardingCompleteResponse) => void | Promise<void>;
 
 export interface OnboardingFlowContextValue {
   state: OnboardingFlowState;
+  setTraineeType: (traineeType: TraineeType) => void;
   setPhoneInput: (countryCode: string, mobile: string) => void;
   start: (payload: OnboardingStartRequest) => Promise<OnboardingSessionResponse | null>;
   retryStart: () => Promise<OnboardingSessionResponse | null>;
   resend: () => Promise<OnboardingSessionResponse | null>;
   verify: (code: string) => Promise<OnboardingVerifyResponse | null>;
-  complete: (password: string) => Promise<OnboardingCompleteResponse | null>;
+  complete: (details: CompletionDetails) => Promise<OnboardingCompleteResponse | null>;
   clearError: () => void;
   restart: () => void;
 }
@@ -63,14 +73,34 @@ const toSafeError = (error: unknown): SafeApiErrorMetadata => {
 
 export function buildCompletionRequest(
   state: OnboardingFlowState,
-  password: string,
+  details: CompletionDetails,
 ): OnboardingCompleteRequest | null {
-  const { sessionToken } = state;
-  if (!sessionToken || password.length < 8 || !canAccessCompletionStep(state)) return null;
+  const { sessionToken, traineeType } = state;
+  const password = details.password;
+  const fullnameAr = details.fullnameAr?.trim() ?? '';
+  if (
+    !sessionToken ||
+    !traineeType ||
+    password.length < 8 ||
+    !canAccessCompletionStep(state) ||
+    (traineeType === 'new' && !fullnameAr)
+  ) return null;
 
-  return {
+  const base = {
     session_token: sessionToken,
     password,
+    trainee_type: traineeType,
+  };
+
+  if (traineeType === 'previous') return base;
+
+  const optional = (value?: string) => value?.trim() || null;
+  return {
+    ...base,
+    fullname_ar: fullnameAr,
+    fullname_en: optional(details.fullnameEn),
+    email: optional(details.email),
+    date_of_birth: optional(details.dateOfBirth),
   };
 }
 
@@ -89,6 +119,10 @@ export function OnboardingFlowProvider({
   const stateRef = useRef(state);
   stateRef.current = state;
   const inFlight = useRef({ start: false, resend: false, verify: false, complete: false });
+
+  const setTraineeType = useCallback((traineeType: TraineeType) => {
+    dispatch({ type: 'SET_TRAINEE_TYPE', traineeType });
+  }, []);
 
   const setPhoneInput = useCallback((countryCode: string, mobile: string) => {
     dispatch({ type: 'SET_PHONE_INPUT', countryCode, mobile });
@@ -163,9 +197,9 @@ export function OnboardingFlowProvider({
     }
   }, []);
 
-  const complete = useCallback(async (password: string) => {
+  const complete = useCallback(async (details: CompletionDetails) => {
     const current = stateRef.current;
-    const request = buildCompletionRequest(current, password);
+    const request = buildCompletionRequest(current, details);
     if (inFlight.current.complete || !request) return null;
     inFlight.current.complete = true;
     dispatch({ type: 'COMPLETION_SUBMITTING' });
@@ -192,6 +226,7 @@ export function OnboardingFlowProvider({
 
   const value = useMemo<OnboardingFlowContextValue>(() => ({
     state,
+    setTraineeType,
     setPhoneInput,
     start,
     retryStart,
@@ -209,6 +244,7 @@ export function OnboardingFlowProvider({
     setPhoneInput,
     start,
     state,
+    setTraineeType,
     verify,
   ]);
 

@@ -117,7 +117,7 @@ export default function PhoneEntryScreen({ navigation }: any) {
             <View style={authStyles.pill}><Text style={authStyles.pillText}>إنشاء الحساب</Text></View>
             <Text style={authStyles.title}>ابدأ برقم جوالك</Text>
             <Text style={authStyles.subtitle}>
-              سنرسل رمزًا للتحقق من الرقم قبل عرض أي معلومات مرتبطة بالحساب.
+              سنرسل رمز التحقق عبر الواتساب الى الرقم المدخل
             </Text>
           </View>
 
