@@ -114,11 +114,11 @@ const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
     >
       <View style={{ flexDirection: 'row-reverse', alignItems: 'center' }}>
         <FlagIcon iso={item.iso} size={18} />
-        <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, marginRight: 8 }}>
+        <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, marginRight: 8, color: authColors.modalText }}>
           {item.nameAr}
         </Text>
       </View>
-      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, color: authColors.text }}>+{item.dial}</Text>
+      <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, color: authColors.modalText }}>+{item.dial}</Text>
     </Pressable>
   );
 
@@ -240,7 +240,7 @@ const ResetPasswordScreen: React.FC<any> = ({ navigation }) => {
           <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.25)' }} onPress={() => setPickerOpen(false)}>
             <View style={{ marginTop: 'auto', backgroundColor: authColors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%' }}>
               <View style={{ padding: 14, borderBottomWidth: 1, borderColor: '#eee' }}>
-                <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, textAlign: 'center' }}>اختر مفتاح الدولة</Text>
+                <Text style={{ fontFamily: 'NotoKufiArabic-Bold', fontSize: 16, textAlign: 'center', color: authColors.modalText }}>اختر مفتاح الدولة</Text>
               </View>
               <FlatList
                 data={ARAB_COUNTRIES}

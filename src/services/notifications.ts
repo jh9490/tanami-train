@@ -10,7 +10,8 @@ import { getStoredProfileId } from '../storage/authStorage';
 
 type InitOpts = {
   onToken?: (token: string) => void | Promise<void>;
-  onOpen?: (data: Record<string, string>) => void;
+  onMessage?: (data: Record<string, string>) => void | Promise<void>;
+  onOpen?: (data: Record<string, string>) => void | Promise<void>;
 };
 
 function stringifyNotificationData(
@@ -97,11 +98,24 @@ async function ackIfSignedIn(msg: FirebaseMessagingTypes.RemoteMessage) {
   }
 }
 
-/** Listen to foreground FCM messages and show them via Notifee */
-function listenForegroundMessages() {
+async function emitNotificationData(
+  callback: InitOpts['onMessage'] | InitOpts['onOpen'],
+  data?: Record<string, string | object>,
+) {
+  if (!callback || !data) return;
+  try {
+    await callback(stringifyNotificationData(data));
+  } catch (e) {
+    console.log('notification data callback error:', e);
+  }
+}
+
+/** Listen to foreground FCM messages, expose their data, and show them via Notifee. */
+function listenForegroundMessages(onMessage?: InitOpts['onMessage']) {
   const unsubscribe = messaging().onMessage(async (remoteMessage) => {
     try {
       await ackIfSignedIn(remoteMessage); // ✅ storage-based
+      await emitNotificationData(onMessage, remoteMessage.data);
       await displayLocalNotification(remoteMessage);
     } catch (e) {
       console.log('displayLocalNotification error:', e);
@@ -111,10 +125,10 @@ function listenForegroundMessages() {
 }
 
 /** Handle when the user taps a notification to open the app */
-function attachOpenHandlers(onOpen?: (data: Record<string, string>) => void) {
+function attachOpenHandlers(onOpen?: InitOpts['onOpen']) {
   const unsubOpened = messaging().onNotificationOpenedApp(async (remoteMessage) => {
     await ackIfSignedIn(remoteMessage);
-    if (remoteMessage?.data && onOpen) onOpen(stringifyNotificationData(remoteMessage.data));
+    await emitNotificationData(onOpen, remoteMessage?.data);
   });
 
   messaging()
@@ -122,13 +136,16 @@ function attachOpenHandlers(onOpen?: (data: Record<string, string>) => void) {
     .then(async (remoteMessage) => {
       if (remoteMessage) {
         await ackIfSignedIn(remoteMessage);
-        if (remoteMessage.data && onOpen) onOpen(stringifyNotificationData(remoteMessage.data));
+        await emitNotificationData(onOpen, remoteMessage.data);
       }
     });
 
-  const unsubNotifee = notifee.onForegroundEvent((event: Event) => {
-    if (event.type === EventType.PRESS && event.detail.notification?.data && onOpen) {
-      onOpen(event.detail.notification.data as Record<string, string>);
+  const unsubNotifee = notifee.onForegroundEvent(async (event: Event) => {
+    if (event.type === EventType.PRESS) {
+      await emitNotificationData(
+        onOpen,
+        event.detail.notification?.data as Record<string, string | object> | undefined,
+      );
     }
   });
 
@@ -152,7 +169,7 @@ export async function initNotifications(opts: InitOpts = {}) {
     }
   }
 
-  const unsubMsg = listenForegroundMessages();
+  const unsubMsg = listenForegroundMessages(opts.onMessage);
   const unsubOpen = attachOpenHandlers(opts.onOpen);
 
   const unsubRefresh = messaging().onTokenRefresh(async (newToken) => {

@@ -20,6 +20,7 @@ import { digitsOnly, stripLeadingZero, buildE164 } from '../../util/phone';
 import FlagIcon from '../../util/FlagIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ThemedBackground from '../components/ThemedBackground';
+import { getOnboardingEntryRoute } from '../../constants/onboarding';
 
 type Country = { code: string; name: string; dial: string };
 
@@ -102,7 +103,7 @@ function CountryCodePicker({
             style={{
               textAlign: 'center',
               fontFamily: 'NotoKufiArabic-Bold',
-              color: authColors.text,
+              color: authColors.modalText,
               marginBottom: 8,
               fontSize: 16,
             }}
@@ -133,7 +134,7 @@ function CountryCodePicker({
                     <Text
                       style={{
                         fontFamily: 'NotoKufiArabic-Regular',
-                        color: authColors.text,
+                        color: authColors.modalText,
                         marginRight: 8,
                       }}
                     >
@@ -143,7 +144,7 @@ function CountryCodePicker({
                   <Text
                     style={{
                       fontFamily: 'NotoKufiArabic-Bold',
-                      color: authColors.text,
+                      color: authColors.modalText,
                     }}
                   >
                     +{item.dial}
@@ -156,7 +157,7 @@ function CountryCodePicker({
             onPress={() => setOpen(false)}
             style={{ marginTop: 10, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 16 }}
           >
-            <Text style={{ color: authColors.text, fontFamily: 'NotoKufiArabic-Regular' }}>
+            <Text style={{ color: authColors.modalText, fontFamily: 'NotoKufiArabic-Regular' }}>
               إغلاق
             </Text>
           </TouchableOpacity>
@@ -272,7 +273,7 @@ const SignInScreen: React.FC<any> = ({ navigation }) => {
 
         <TouchableOpacity
           style={authStyles.actionLink}
-          onPress={() => navigation.navigate('SignUp')}
+          onPress={() => navigation.navigate(getOnboardingEntryRoute())}
         >
           <Text style={authStyles.actionLinkText}>ليس لديك حساب؟ أنشئ حساباً جديداً</Text>
         </TouchableOpacity>

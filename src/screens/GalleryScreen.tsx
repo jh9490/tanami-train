@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
+import { resolveMediaUrl } from '../util/mediaUrl';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -108,8 +109,8 @@ const GalleryScreen: React.FC = () => {
       .filter((it) => it && (it.thumb_url || it.full_url || it.url || it.thumb))
       .map((it) => ({
         id: Number(it.id),
-        full_url: String(it.full_url || it.url || ''),
-        thumb_url: String(it.thumb_url || it.thumb || it.full_url || it.url || ''),
+        full_url: resolveMediaUrl(it.full_url || it.url),
+        thumb_url: resolveMediaUrl(it.thumb_url || it.thumb || it.full_url || it.url),
         upload_date: String(it.upload_date || ''),
       }));
     setItems(sanitized);

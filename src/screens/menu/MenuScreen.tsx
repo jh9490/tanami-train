@@ -105,11 +105,18 @@ export default function MenuScreen() {
             onPress={() => navigation.navigate('VerifyCertificate')}
           />
           {isAuthenticated && (
-            <Row
-              title="طلبات التسجيل"
-              icon="how-to-reg"
-              onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
-            />
+            <>
+              <Row
+                title="طلبات التسجيل"
+                icon="how-to-reg"
+                onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+              />
+              <Row
+                title="شهاداتي"
+                icon="workspace-premium"
+                onPress={() => navigation.navigate('UserStack', { screen: 'MyCertificates' })}
+              />
+            </>
           )}
           <Row
             title="اتصل بنا"

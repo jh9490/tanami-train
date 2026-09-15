@@ -11,6 +11,7 @@ export const authColors = {
   text: colors.cream,
   muted: 'rgba(255, 248, 239, 0.78)',
   hint: 'rgba(255, 248, 239, 0.58)',
+  modalText: colors.text,
   white: colors.white,
 };
 
@@ -109,6 +110,8 @@ export const authStyles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 14,
+    minHeight: 48,
+    justifyContent: 'center',
     direction: 'rtl',
   },
   optionTitle: {
@@ -154,6 +157,9 @@ export const authStyles = StyleSheet.create({
   },
   actionLink: {
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 8,
   },
   actionLinkText: {
     color: colors.gold,

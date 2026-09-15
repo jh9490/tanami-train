@@ -26,6 +26,10 @@ import CourseDialog, { CourseLite } from './components/CourseDialog';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors as themeColors } from '../theme/colors';
+import { getOnboardingEntryRoute } from '../constants/onboarding';
+import { TANAMI_WHATSAPP_URL } from '../constants/contact';
+import { isLiveActivity } from '../util/courseRegistration';
+import { resolveMediaUrl } from '../util/mediaUrl';
 
 I18nManager.forceRTL(true);
 
@@ -78,7 +82,7 @@ const HOME_EXTERNAL_LINKS: HomeExternalLink[] = [
     id: 'whatsapp',
     iconName: 'whatsapp',
     label: 'واتساب',
-    url: 'https://whatsapp.com/channel/0029VaAySIQ84OmFIvyBNK1Y',
+    url: TANAMI_WHATSAPP_URL,
   },
   {
     id: 'website',
@@ -315,8 +319,6 @@ const SocialIcon = styled.TouchableOpacity`
   margin: 6px 8px;
 `;
 
-const toAbs = (rel?: string | null) => (rel ? `${BASE}${rel}` : undefined);
-
 const HomeGridItem = ({ icon, label, onPress }: HomeGridItemProps) => (
   <GridItemWrap onPress={onPress} activeOpacity={0.8}>
     <MaterialIcon name={icon} size={24} color={themeColors.gold} />
@@ -352,7 +354,7 @@ export default function HomeScreen() {
 
   const { width: windowWidth } = useWindowDimensions();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isAuthenticated, displayName, token } = useAuth();
+  const { isAuthenticated, displayName, token, signOut, refreshBootstrap } = useAuth();
 
   const happeningItems = useMemo(
     () => [...courses.current, ...courses.upcoming].slice(0, 12),
@@ -369,11 +371,12 @@ export default function HomeScreen() {
     try {
       const [slidersResponse, activitiesResponse] = await Promise.all([fetch(SLIDERS_URL), fetch(ACTIVITIES_URL)]);
       const slidersJson = await slidersResponse.json();
+      console.log(slidersJson);
       const activitiesJson = await activitiesResponse.json();
 
       const mappedSliders = slidersJson
         .map((slider: any) => {
-          const image = toAbs(slider.image0?.p50 || slider.image0?.url);
+          const image = resolveMediaUrl(slider.mobileImage0?.p50 || slider.mobileImage0?.url);
           if (!image) return null;
           return {
             id: String(slider.id),
@@ -404,14 +407,14 @@ export default function HomeScreen() {
         const item: CourseLite = {
           id: String(activity.id),
           title: (activity.course_name || '').toString().trim() || '—',
-          image: activity.image_url ?? null,
+          image: resolveMediaUrl(activity.image_url) || null,
           headLines: activity.course?.course_head_lines || '',
           nameAr: activity.course?.name_ar ?? null,
           days: activity.course?.days ?? null,
           hours: activity.course?.hours ?? null,
           date: activity.date ?? null,
           endDate: activity.end_date ?? null,
-          live: !!activity.live,
+          live: isLiveActivity(activity.live),
           cost: activity.course?.cost ?? null,
         };
 
@@ -434,8 +437,26 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchAll();
-  }, [fetchAll]);
+    Promise.all([
+      fetchAll(),
+      ...(token ? [refreshBootstrap()] : []),
+    ]).catch(() => undefined);
+  }, [fetchAll, refreshBootstrap, token]);
+
+  const removeActivity = useCallback((activityId: string) => {
+    setCourses(previous => ({
+      current: previous.current.filter(item => item.id !== activityId),
+      upcoming: previous.upcoming.filter(item => item.id !== activityId),
+    }));
+  }, []);
+
+  const disableOnlineForActivity = useCallback((activityId: string) => {
+    setCourses(previous => ({
+      current: previous.current.map(item => item.id === activityId ? { ...item, live: false } : item),
+      upcoming: previous.upcoming.map(item => item.id === activityId ? { ...item, live: false } : item),
+    }));
+    setSelectedCourse(previous => previous?.id === activityId ? { ...previous, live: false } : previous);
+  }, []);
 
   const getCourseStatusLabel = (item: CourseLite) => {
     if (item.live) return 'مباشر';
@@ -520,8 +541,8 @@ export default function HomeScreen() {
         />
         <HomeGridItem
           icon="verified"
-          label="تحقق من شهادة"
-          onPress={() => navigation.navigate('UserStack', { screen: 'VerifyCertificateScreen' })}
+          label="شهاداتي"
+          onPress={() => navigation.navigate('UserStack', { screen: 'MyCertificates' })}
         />
       </View>
     </>
@@ -559,7 +580,9 @@ export default function HomeScreen() {
 
         <PrimaryBtn
           style={{ alignSelf: 'center', marginTop: 16 }}
-          onPress={() => navigation.navigate('AuthStack', { screen: 'SignUp' })}
+          onPress={() => navigation.navigate('AuthStack', {
+            screen: getOnboardingEntryRoute(),
+          })}
         >
           <PrimaryText>إنشاء حساب</PrimaryText>
         </PrimaryBtn>
@@ -741,6 +764,15 @@ export default function HomeScreen() {
         onClose={() => setDetailsOpen(false)}
         isAuthenticated={isAuthenticated}
         token={token}
+        onRegistrationChanged={async () => {
+          await Promise.all([refreshBootstrap(), fetchAll()]);
+        }}
+        onActivityUnavailable={async (activityId, reason) => {
+          if (reason === 'deleted') removeActivity(activityId);
+          else await fetchAll();
+        }}
+        onOnlineUnavailable={disableOnlineForActivity}
+        onUnauthorized={signOut}
       />
     </GestureHandlerRootView>
   );

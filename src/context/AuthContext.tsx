@@ -1,138 +1,364 @@
-// src/context/AuthContext.tsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {Alert, AppState} from 'react-native';
 import messaging from '@react-native-firebase/messaging';
-import { api } from '../services/api';
-import { mapAuthError } from '../auth/otp';
-import { getOrCreateDeviceId } from '../util/deviceId';
-import type { Profile } from '../types/api';
 
-// ⬇️ NEW: import your storage helpers for profile id
+import {mapAuthError} from '../auth/otp';
+import {api} from '../services/api';
 import {
-  setStoredProfileId,
+  onboardingApi,
+  OnboardingApiError,
+} from '../services/onboardingApi';
+import {
   clearStoredProfileId,
+  setStoredProfileId,
 } from '../storage/authStorage';
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from '../storage/accessTokenStorage';
+import {
+  clearBootstrapStorage,
+  consumeBootstrapRefreshPending,
+  loadBootstrapSnapshot,
+  saveBootstrapSnapshot,
+} from '../storage/bootstrapStorage';
+import type {
+  AuthenticatedLinkStatus,
+  BootstrapProfile,
+  HistoricalCertificateItem,
+  OnboardingBootstrap,
+  Profile,
+  RegistrationRequestItem,
+} from '../types/api';
+import {getOrCreateDeviceId} from '../util/deviceId';
 
 type User = {
   id: number;
-  username: string; // mobile
+  username: string;
   email: string;
   status: number;
 };
+
+type BootstrapCourses = OnboardingBootstrap['courses'];
 
 type AuthContextType = {
   user: User | null;
   token: string | null;
   profile: Profile | null;
+  bootstrap: OnboardingBootstrap | null;
+  bootstrapLoading: boolean;
+  bootstrapError: OnboardingApiError | null;
+  bootstrapVersion: number | null;
+  credentialInvalidationVersion: number;
+  bootstrapProfile: BootstrapProfile | null;
+  linkStatus: AuthenticatedLinkStatus | null;
+  courses: BootstrapCourses;
+  certificates: HistoricalCertificateItem[];
+  registrationRequests: RegistrationRequestItem[];
+  historyLinkRequest: OnboardingBootstrap['history_link_request'];
   loading: boolean;
   isAuthenticated: boolean;
-
-  // actions
-  signUp: (
-    mobile: string,
-    password: string,
-    email?: string,
-  ) => Promise<void>;
+  signUp: (mobile: string, password: string, email?: string) => Promise<void>;
   verifyOtp: (mobile: string, code: string) => Promise<void>;
   signIn: (mobile: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  installAccessToken: (accessToken: string) => Promise<void>;
   refreshMe: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-
-  // convenience
+  refreshBootstrap: () => Promise<OnboardingBootstrap | null>;
+  refreshAccountData: () => Promise<void>;
   displayName: string | null;
 };
 
-const AuthContext = createContext<AuthContextType>({} as any);
-const TOKEN_KEY = 'authToken';
+const EMPTY_COURSES: BootstrapCourses = {
+  upcoming: [],
+  current: [],
+  previous: [],
+};
+const EMPTY_CERTIFICATES: HistoricalCertificateItem[] = [];
+const EMPTY_REGISTRATIONS: RegistrationRequestItem[] = [];
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+
+function isUnauthorized(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    error.status === 401
+  );
+}
+
+function bootstrapProfileToProfile(
+  source: BootstrapProfile | null,
+  previous: Profile | null,
+): Profile | null {
+  if (!source) return null;
+
+  const supplemental = previous?.id === source.id ? previous : null;
+  return {
+    id: source.id,
+    student_id: source.student_id,
+    mobile: source.mobile,
+    fullname_ar: source.fullname_ar,
+    fullname_en: source.fullname_en,
+    email: source.email,
+    date_of_birth: source.date_of_birth,
+    title_ar: supplemental?.title_ar ?? null,
+    title_en: supplemental?.title_en ?? null,
+    address_ar: supplemental?.address_ar ?? null,
+    address_en: supplemental?.address_en ?? null,
+    pending_approval: supplemental?.pending_approval,
+    last_submitted_at: supplemental?.last_submitted_at,
+    approved_at: supplemental?.approved_at,
+  };
+}
+
+export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [bootstrap, setBootstrap] = useState<OnboardingBootstrap | null>(null);
+  const [bootstrapLoading, setBootstrapLoading] = useState(false);
+  const [bootstrapError, setBootstrapError] =
+    useState<OnboardingApiError | null>(null);
   const [loading, setLoading] = useState(true);
+  const [credentialInvalidationVersion, setCredentialInvalidationVersion] =
+    useState(0);
 
-  /** Register this device/token with backend for a specific profile (or null) */
-  const registerFcmForProfile = async (profileId: number | null) => {
+  const tokenRef = useRef<string | null>(null);
+  const bootstrapRequestRef = useRef(0);
+  const bootstrapCommitRef = useRef<Promise<void>>(Promise.resolve());
+
+  const updateToken = useCallback((nextToken: string | null) => {
+    tokenRef.current = nextToken;
+    setToken(nextToken);
+  }, []);
+
+  const writeProfileIdToStorage = useCallback(
+    async (nextProfile?: {id: number} | null) => {
+      if (nextProfile?.id != null) {
+        await setStoredProfileId(nextProfile.id);
+      } else {
+        await clearStoredProfileId();
+      }
+    },
+    [],
+  );
+
+  const clearSession = useCallback(async (credentialInvalidated = false) => {
+    bootstrapRequestRef.current += 1;
+    updateToken(null);
+    setUser(null);
+    setProfile(null);
+    setBootstrap(null);
+    setBootstrapError(null);
+    setBootstrapLoading(false);
+    if (credentialInvalidated) {
+      setCredentialInvalidationVersion(current => current + 1);
+    }
+
+    await Promise.allSettled([
+      clearAccessToken(),
+      clearStoredProfileId(),
+      clearBootstrapStorage(),
+    ]);
+  }, [updateToken]);
+
+  const registerFcmForProfile = useCallback(async (profileId: number | null) => {
     try {
       await messaging().registerDeviceForRemoteMessages();
       const fcm = await messaging().getToken();
       const deviceId = await getOrCreateDeviceId();
       await api.registerPushToken({
-        profile_id: profileId, // null if guest
+        profile_id: profileId,
         device_id: deviceId,
         platform: 'android',
         token: fcm,
         app_version: '1.0.1',
       });
-    } catch (e) {
-      console.log('❌ FCM register error:', e);
+    } catch (error) {
+      console.log('FCM registration failed:', error);
     }
-  };
+  }, []);
 
-  // ---- helpers to keep storage in sync ----
-  const persistToken = async (t: string | null) => {
-    setToken(t);
-    if (t) await AsyncStorage.setItem(TOKEN_KEY, t);
-    else await AsyncStorage.removeItem(TOKEN_KEY);
-  };
+  const applyBootstrap = useCallback(
+    async (snapshot: OnboardingBootstrap) => {
+      setBootstrap(snapshot);
+      setProfile(previous =>
+        bootstrapProfileToProfile(snapshot.profile, previous),
+      );
+      await writeProfileIdToStorage(snapshot.profile);
+    },
+    [writeProfileIdToStorage],
+  );
 
-  const writeProfileIdToStorage = async (p?: Profile | null) => {
-    const pid = p?.id ?? null;
-    if (pid != null) {
-      await setStoredProfileId(pid);
-    } else {
-      await clearStoredProfileId();
-    }
-  };
+  const refreshBootstrapForToken = useCallback(
+    async (accessToken: string): Promise<OnboardingBootstrap | null> => {
+      const requestId = ++bootstrapRequestRef.current;
+      setBootstrapLoading(true);
+      setBootstrapError(null);
 
-  /** fetch profile and also return it, while syncing storage */
-  const fetchProfileSafe = async (t: string): Promise<Profile | null> => {
-    try {
-      const p = await api.getProfile(t);
-      const prof = p.profile ?? null;
-      setProfile(prof);
-      await writeProfileIdToStorage(prof); // ⬅️ keep storage in sync
-      return prof;
-    } catch {
-      setProfile(null);
-      await clearStoredProfileId(); // ⬅️ remove stale id if any
-      return null;
-    }
-  };
-
-  // boot: load token, then /me and /profile, then register FCM if logged in
-  useEffect(() => {
-    (async () => {
       try {
-        const t = await AsyncStorage.getItem(TOKEN_KEY);
-        if (!t) return;
+        const snapshot = await onboardingApi.bootstrap(accessToken);
 
-        setToken(t);
-        const me = await api.me(t);
-        setUser(me.user as User);
-
-        let prof: Profile | null = null;
-        try {
-          const p = await api.getProfile(t);
-          prof = p.profile ?? null;
-          setProfile(prof);
-          await writeProfileIdToStorage(prof); // ⬅️ store profile id on boot
-        } catch {
-          setProfile(null);
-          await clearStoredProfileId();
+        if (
+          requestId !== bootstrapRequestRef.current ||
+          tokenRef.current !== accessToken
+        ) {
+          return null;
         }
 
-        const profileId = prof?.id ?? null;
-        if (profileId) await registerFcmForProfile(profileId);
-      } catch {
-        // ignore
+        let committed = false;
+        const commit = bootstrapCommitRef.current
+          .catch(() => undefined)
+          .then(async () => {
+            if (
+              requestId !== bootstrapRequestRef.current ||
+              tokenRef.current !== accessToken
+            ) {
+              return;
+            }
+
+            await saveBootstrapSnapshot(snapshot);
+
+            if (
+              requestId !== bootstrapRequestRef.current ||
+              tokenRef.current !== accessToken
+            ) {
+              return;
+            }
+
+            await applyBootstrap(snapshot);
+            committed = true;
+          });
+        bootstrapCommitRef.current = commit;
+        await commit;
+        return committed ? snapshot : null;
+      } catch (error) {
+        if (requestId !== bootstrapRequestRef.current) return null;
+
+        if (isUnauthorized(error)) {
+          await clearSession(true);
+        } else if (error instanceof OnboardingApiError) {
+          setBootstrapError(error);
+        }
+        throw error;
       } finally {
-        setLoading(false);
+        if (requestId === bootstrapRequestRef.current) {
+          setBootstrapLoading(false);
+        }
+      }
+    },
+    [applyBootstrap, clearSession],
+  );
+
+  const prepareAuthenticatedSession = useCallback(
+    async (accessToken: string, nextUser: User | null) => {
+      await setAccessToken(accessToken);
+
+      bootstrapRequestRef.current += 1;
+      setBootstrap(null);
+      setBootstrapError(null);
+      setProfile(null);
+      setUser(nextUser);
+      updateToken(accessToken);
+      await Promise.allSettled([
+        clearBootstrapStorage(),
+        clearStoredProfileId(),
+      ]);
+
+      try {
+        const snapshot = await refreshBootstrapForToken(accessToken);
+        await registerFcmForProfile(snapshot?.profile?.id ?? null);
+      } catch (error) {
+        // The credential is already installed. Preserve the authenticated
+        // session across retryable Bootstrap failures, but propagate a 401
+        // after the centralized clearing path has invalidated it.
+        if (isUnauthorized(error)) throw error;
+        await registerFcmForProfile(null);
+      }
+    },
+    [refreshBootstrapForToken, registerFcmForProfile, updateToken],
+  );
+
+  const installAccessToken = useCallback(
+    async (accessToken: string) => {
+      await prepareAuthenticatedSession(accessToken, null);
+    },
+    [prepareAuthenticatedSession],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const storedToken = await getAccessToken();
+        if (cancelled) return;
+
+        if (!storedToken) {
+          await clearBootstrapStorage();
+          return;
+        }
+
+        updateToken(storedToken);
+        const cached = await loadBootstrapSnapshot();
+        if (cancelled) return;
+        if (cached) await applyBootstrap(cached);
+        if (cancelled) return;
+
+        await consumeBootstrapRefreshPending();
+        if (cancelled) return;
+
+        const snapshot = await refreshBootstrapForToken(storedToken);
+        if (!cancelled) {
+          await registerFcmForProfile(snapshot?.profile?.id ?? null);
+        }
+      } catch (error) {
+        if (isUnauthorized(error) && tokenRef.current) {
+          await clearSession(true);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+      bootstrapRequestRef.current += 1;
+    };
+  }, [
+    applyBootstrap,
+    clearSession,
+    refreshBootstrapForToken,
+    registerFcmForProfile,
+    updateToken,
+  ]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      const currentToken = tokenRef.current;
+      if (nextState === 'active' && currentToken) {
+        consumeBootstrapRefreshPending()
+          .catch(() => false)
+          .then(() => refreshBootstrapForToken(currentToken))
+          .catch(() => undefined);
+      }
+    });
+    return () => subscription.remove();
+  }, [refreshBootstrapForToken]);
 
   const signUp = async (
     mobile: string,
@@ -142,118 +368,173 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await api.signup(mobile, password, email);
       Alert.alert('تم', 'تم إنشاء الحساب بنجاح. أكمل التحقق لاستلام الرمز.');
-    } catch (e: any) {
-      Alert.alert('خطأ', mapAuthError(e.message));
-      throw e;
+    } catch (error: any) {
+      Alert.alert('خطأ', mapAuthError(error.message));
+      throw error;
     }
   };
 
   const verifyOtp = async (mobile: string, code: string) => {
     try {
-      const res = await api.verify(mobile, code);
-      await persistToken(res.access_token);
-      setUser(res.user as User);
-
-      const prof = await fetchProfileSafe(res.access_token); // ⬅️ writes storage inside
-      const profileId = prof?.id ?? null;
-
-      // register after verification (user is now logged in)
-      await registerFcmForProfile(profileId ?? null);
-    } catch (e: any) {
-      Alert.alert('خطأ', mapAuthError(e.message));
-      throw e;
+      const response = await api.verify(mobile, code);
+      await prepareAuthenticatedSession(
+        response.access_token,
+        response.user as User,
+      );
+    } catch (error: any) {
+      Alert.alert('خطأ', mapAuthError(error.message));
+      throw error;
     }
   };
 
   const signIn = async (mobile: string, password: string) => {
     try {
-      const res = await api.login(mobile, password);
-      await persistToken(res.access_token);
-      setUser(res.user as User);
-
-      const prof = await fetchProfileSafe(res.access_token); // ⬅️ writes storage inside
-      const profileId = prof?.id ?? null;
-
-      // register after login
-      await registerFcmForProfile(profileId ?? null);
-    } catch (e: any) {
-      Alert.alert('خطأ', mapAuthError(e.message));
-      throw e;
+      const response = await api.login(mobile, password);
+      await prepareAuthenticatedSession(
+        response.access_token,
+        response.user as User,
+      );
+    } catch (error: any) {
+      Alert.alert('خطأ', mapAuthError(error.message));
+      throw error;
     }
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
-      if (token) await api.logout(token);
+      const currentToken = tokenRef.current;
+      if (currentToken) await api.logout(currentToken);
     } catch {
-      // ignore server error; still clear locally
+      // Server logout is best-effort; local credentials are always cleared.
     } finally {
-      await persistToken(null);
-      setUser(null);
-      setProfile(null);
-      await clearStoredProfileId(); // ⬅️ remove profile id for ACK readers
-      // optional: keep guest registration handled in App.tsx
+      await clearSession();
     }
-  };
+  }, [clearSession]);
 
   const refreshMe = async () => {
-    if (!token) return;
+    const currentToken = tokenRef.current;
+    if (!currentToken) return;
+
     try {
-      const me = await api.me(token);
-      setUser(me.user as User);
-    } catch {
-      await persistToken(null);
-      setUser(null);
-      setProfile(null);
-      await clearStoredProfileId();
+      const response = await api.me(currentToken);
+      setUser(response.user as User);
+    } catch (error) {
+      if (isUnauthorized(error)) await clearSession(true);
+      else throw error;
     }
   };
 
   const refreshProfile = async () => {
-    if (!token) return;
-    await fetchProfileSafe(token); // ⬅️ keeps storage aligned as well
+    const currentToken = tokenRef.current;
+    if (!currentToken) return;
+
+    try {
+      const response = await api.getProfile(currentToken);
+      const detailedProfile = response.profile ?? null;
+      const authoritativeProfile = bootstrap?.profile ?? null;
+      const nextProfile = authoritativeProfile
+        ? bootstrapProfileToProfile(authoritativeProfile, detailedProfile)
+        : detailedProfile;
+      setProfile(nextProfile);
+      await writeProfileIdToStorage(nextProfile);
+    } catch (error) {
+      if (isUnauthorized(error)) await clearSession(true);
+      else throw error;
+    }
   };
 
-  // re-register when FCM token refreshes (if logged in)
+  const refreshBootstrap = useCallback(async () => {
+    const currentToken = tokenRef.current;
+    if (!currentToken) return null;
+    return refreshBootstrapForToken(currentToken);
+  }, [refreshBootstrapForToken]);
+
+  const refreshAccountData = useCallback(async () => {
+    await refreshBootstrap();
+  }, [refreshBootstrap]);
+
   useEffect(() => {
-    const unsub = messaging().onTokenRefresh(async (newToken) => {
+    const unsubscribe = messaging().onTokenRefresh(async newToken => {
       try {
         const deviceId = await getOrCreateDeviceId();
-        const profileId = profile?.id ?? null;
         await api.registerPushToken({
-          profile_id: profileId ?? null,
+          profile_id: bootstrap?.profile?.id ?? null,
           device_id: deviceId,
           platform: 'android',
           token: newToken,
           app_version: '1.0.1',
         });
-      } catch (e) {
-        console.log('onTokenRefresh register error:', e);
+      } catch (error) {
+        console.log('FCM token refresh registration failed:', error);
       }
     });
-    return () => unsub();
-  }, [user?.id, profile?.id]);
+    return () => unsubscribe();
+  }, [bootstrap?.profile?.id]);
 
+  const hasLinkedHistory = bootstrap?.link_status === 'linked';
+  const courses = hasLinkedHistory ? bootstrap.courses : EMPTY_COURSES;
+  const certificates = hasLinkedHistory
+    ? bootstrap.certificates
+    : EMPTY_CERTIFICATES;
+  const registrationRequests = hasLinkedHistory
+    ? bootstrap.registration_requests
+    : EMPTY_REGISTRATIONS;
   const displayName =
-    (profile?.fullname_ar && profile.fullname_ar.trim() !== '' ? profile.fullname_ar : null) ??
+    (bootstrap?.profile?.fullname_ar?.trim() || null) ??
+    (bootstrap?.profile?.fullname_en?.trim() || null) ??
+    (profile?.fullname_ar?.trim() || null) ??
+    (profile?.fullname_en?.trim() || null) ??
     (user?.username ?? null);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextType>(
     () => ({
       user,
       token,
       profile,
+      bootstrap,
+      bootstrapLoading,
+      bootstrapError,
+      bootstrapVersion: bootstrap?.cache.version ?? null,
+      credentialInvalidationVersion,
+      bootstrapProfile: bootstrap?.profile ?? null,
+      linkStatus: bootstrap?.link_status ?? null,
+      courses,
+      certificates,
+      registrationRequests,
+      historyLinkRequest: bootstrap?.history_link_request ?? null,
       loading,
-      isAuthenticated: !!user && !!token,
+      isAuthenticated: Boolean(token),
       signUp,
       verifyOtp,
       signIn,
       signOut,
+      installAccessToken,
       refreshMe,
       refreshProfile,
+      refreshBootstrap,
+      refreshAccountData,
       displayName,
     }),
-    [user, token, profile, loading, displayName]
+    // Legacy actions intentionally close over the current provider state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      user,
+      token,
+      profile,
+      bootstrap,
+      bootstrapLoading,
+      bootstrapError,
+      credentialInvalidationVersion,
+      courses,
+      certificates,
+      registrationRequests,
+      loading,
+      signOut,
+      installAccessToken,
+      refreshBootstrap,
+      refreshAccountData,
+      displayName,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

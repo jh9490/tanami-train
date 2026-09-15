@@ -49,6 +49,13 @@ jest.mock('../src/navigation/AppNavigator', () => {
   return () => React.createElement(View);
 });
 
+jest.mock('../src/screens/SplashScreen', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  return () => React.createElement(View, { testID: 'splash-screen' });
+});
+
 jest.mock('../src/services/notifications', () => ({
   initNotifications: jest.fn(() => Promise.resolve(() => {})),
 }));
@@ -76,7 +83,9 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 import App from '../App';
 
 test('renders correctly', async () => {
+  let renderer: ReactTestRenderer.ReactTestRenderer;
   await ReactTestRenderer.act(() => {
-    ReactTestRenderer.create(<App />);
+    renderer = ReactTestRenderer.create(<App />);
   });
+  await ReactTestRenderer.act(() => renderer!.unmount());
 });

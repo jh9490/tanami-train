@@ -10,7 +10,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { api } from '../../services/api';
+import { api, ApiError } from '../../services/api';
+import {
+  canRequestOnlineRegistration,
+  canRequestCourseRegistration,
+  registrationErrorMessage,
+} from '../../util/courseRegistration';
 
 export type CourseLite = {
   id: string;
@@ -32,6 +37,10 @@ type BaseProps = {
   onClose: () => void;
   isAuthenticated: boolean;
   token?: string | null;
+  onRegistrationChanged?: () => void | Promise<void>;
+  onActivityUnavailable?: (activityId: string, reason: 'deleted' | 'closed') => void | Promise<void>;
+  onOnlineUnavailable?: (activityId: string) => void;
+  onUnauthorized?: () => void | Promise<void>;
 };
 
 type Tabs = 'head' | 'details' | 'poster' | 'register';
@@ -76,10 +85,26 @@ export default function CourseDialog({
   enabledTabs,
   initialTab = 'head',
   durationOnlyDetails = false,
+  onRegistrationChanged,
+  onActivityUnavailable,
+  onOnlineUnavailable,
+  onUnauthorized,
 }: Props) {
-  // default tabs: show all (register only if authenticated)
-  const defaultTabs: Tabs[] = ['head', 'details', 'poster', ...(isAuthenticated ? (['register'] as const) : [])];
-  const tabs: Tabs[] = enabledTabs?.length ? enabledTabs : defaultTabs;
+  const registrationEnabled = canRequestCourseRegistration(
+    isAuthenticated,
+    course?.live,
+  );
+  const [onlineRejected, setOnlineRejected] = useState(false);
+  const onlineEnabled = canRequestOnlineRegistration(course?.live) && !onlineRejected;
+  const defaultTabs: Tabs[] = [
+    'head',
+    'details',
+    'poster',
+    ...(registrationEnabled ? (['register'] as const) : []),
+  ];
+  const tabs: Tabs[] = (enabledTabs?.length ? enabledTabs : defaultTabs).filter(
+    candidate => candidate !== 'register' || registrationEnabled,
+  );
 
   const [tab, setTab] = useState<Tabs>(initialTab);
   const [mode, setMode] = useState<'onsite' | 'online'>('onsite');
@@ -91,6 +116,8 @@ export default function CourseDialog({
   useEffect(() => {
     if (!visible) return;
     setTab(tabs.includes(initialTab) ? initialTab : tabs[0]);
+    setMode('onsite');
+    setOnlineRejected(false);
   // Reset the dialog for each newly opened course. The enabled tab list is
   // supplied declaratively by the caller and does not need to trigger a reset.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,7 +148,7 @@ export default function CourseDialog({
     }
     setSubmitting(true);
     try {
-      const online = mode === 'online' ? 1 : 0;
+      const online = mode === 'online' && onlineEnabled ? 1 : 0;
       const res = await api.registerForActivity(token, activityId, online as 0 | 1);
       const ok = (res as any)?.ok;
       const msg =
@@ -131,9 +158,27 @@ export default function CourseDialog({
             ? 'تم إرسال طلب التسجيل بنجاح.'
             : (res as any)?.error || (res as any)?.message || 'تعذر إرسال الطلب.';
       Alert.alert(ok ? 'تم' : 'خطأ', msg);
-      if (ok) onClose();
+      if (ok) {
+        await onRegistrationChanged?.();
+        onClose();
+      }
     } catch (e: any) {
-      Alert.alert('خطأ', e?.message || 'تعذر إرسال الطلب.');
+      if (e instanceof ApiError) {
+        if (e.status === 401 || e.code === 'unauthorized') {
+          await onUnauthorized?.();
+        } else if (e.status === 404 || e.code === 'activity_not_found') {
+          await onActivityUnavailable?.(c.id, 'deleted');
+          onClose();
+        } else if (e.status === 409 || e.code === 'activity_not_open_for_registration') {
+          await onActivityUnavailable?.(c.id, 'closed');
+          onClose();
+        } else if (e.status === 422 && e.code === 'online_registration_unavailable') {
+          setOnlineRejected(true);
+          setMode('onsite');
+          onOnlineUnavailable?.(c.id);
+        }
+      }
+      Alert.alert('تعذر التسجيل', registrationErrorMessage(e));
     } finally {
       setSubmitting(false);
     }
@@ -144,7 +189,7 @@ export default function CourseDialog({
     { k: 'head' as const, t: 'العناوين' },
     { k: 'details' as const, t: 'التفاصيل' },
     { k: 'poster' as const, t: 'الملصق' },
-    ...(isAuthenticated ? [{ k: 'register' as const, t: 'التسجيل' }] : []),
+    ...(registrationEnabled ? [{ k: 'register' as const, t: 'التسجيل' }] : []),
   ].filter((t) => tabs.includes(t.k));
 
   return (
@@ -299,7 +344,7 @@ export default function CourseDialog({
                     >
                       {[
                         { k: 'onsite' as const, t: 'حضوري' },
-                        { k: 'online' as const, t: 'أونلاين' },
+                        ...(onlineEnabled ? [{ k: 'online' as const, t: 'أونلاين' }] : []),
                       ].map(({ k, t }) => {
                         const active = mode === k;
                         return (

@@ -1,65 +1,32 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert,
+  RefreshControl,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
 import { CourseItem } from '../types/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
+import { TANAMI_WHATSAPP_URL } from '../constants/contact';
+import { openLinkSafe } from '../util/Linker';
 
 type Phase = 'current' | 'upcoming' | 'previous';
 
 export default function MyCoursesScreen({ navigation }: any) {
   const [tab, setTab] = useState<Phase>('current');
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<CourseItem[]>([]);
-
-  const { user, token } = useAuth();
-  const mobile: string | undefined = user?.username || undefined;
-  const [studentId, setStudentId] = useState<number | null>(null);
-
-  const fetchCourses = useCallback(
-    async (phase: Phase) => {
-      if (!token) return;
-      if (!mobile) {
-        Alert.alert('تنبيه', 'لا يوجد رقم جوال للمستخدم.');
-        setData([]);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setData([]);
-        if (!user?.username)
-          return
-        const json = await api.fetchCourses(token, user?.username, phase);
-
-        if (json.result === 1) {
-          setData(json.items || []);
-          setStudentId(json.student?.id ?? null);
-
-        }
-        else setData([]);
-      } catch (err) {
-        console.error('fetchCourses error', err);
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [token, mobile, user?.username]
-  );
-
-  useEffect(() => {
-    fetchCourses(tab);
-  }, [tab, fetchCourses]);
+  const {
+    courses,
+    bootstrapProfile,
+    bootstrapLoading,
+    refreshBootstrap,
+  } = useAuth();
+  const data = courses[tab];
+  const studentId = bootstrapProfile?.student_id ?? null;
 
   const TabBtn = ({ value, label }: { value: Phase; label: string }) => (
     <TouchableOpacity
@@ -92,13 +59,36 @@ export default function MyCoursesScreen({ navigation }: any) {
         <TabBtn value="previous" label="السابقة" />
       </View>
 
+      {tab === 'previous' && (
+        <View style={styles.previousCoursesWarning}>
+          <Text style={styles.previousCoursesWarningText}>
+            إذا كانت لديك دورات سابقة ولا تظهر هنا كلها أو بعضها، يرجى التواصل مع إدارة تنامي ترين عبر واتساب.
+          </Text>
+          <TouchableOpacity
+            accessibilityRole="link"
+            activeOpacity={0.8}
+            onPress={() => openLinkSafe(TANAMI_WHATSAPP_URL)}
+          >
+            <Text style={styles.whatsappLink}>التواصل عبر واتساب</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* list */}
       <View style={styles.listWrap}>
-        {loading ? (
+        {bootstrapLoading && data.length === 0 ? (
           <AppLoading style={{ backgroundColor: 'transparent' }} />
         ) : (
           <FlatList
             data={data}
+            refreshControl={
+              <RefreshControl
+                refreshing={bootstrapLoading}
+                onRefresh={() => refreshBootstrap().catch(() => undefined)}
+                tintColor={colors.gold}
+                colors={[colors.gold]}
+              />
+            }
             keyExtractor={(it, idx) =>
               String(it.registration_id ?? it.activity?.id ?? it.course?.id ?? idx)
             }
@@ -170,6 +160,31 @@ const styles = StyleSheet.create({
   listWrap: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  previousCoursesWarning: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(203, 174, 130, 0.16)',
+    borderColor: colors.gold,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  previousCoursesWarningText: {
+    color: colors.cream,
+    fontFamily: 'NotoKufiArabic-Regular',
+    fontSize: 10,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  whatsappLink: {
+    color: colors.gold,
+    fontFamily: 'NotoKufiArabic-Bold',
+    fontSize: 10,
+    lineHeight: 19,
+    marginTop: 3,
+    textDecorationLine: 'underline',
   },
 
   // Course card

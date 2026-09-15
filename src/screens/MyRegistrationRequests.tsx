@@ -1,79 +1,28 @@
 // src/screens/MyRegistrationRequests.tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
-  Alert,
   FlatList,
   RefreshControl,
   Text,
   View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
 import AppLoading from './components/AppLoading';
 import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
-
-type ReqItem = {
-  id: number;
-  user_id: number;
-  activity_id: number;
-  online: 0 | 1;
-  status: 0 | 1 | 2;
-  created_at?: string | null;
-  updated_at?: string | null;
-
-  // NEW (from API actionMyRegistrations):
-  activity_date?: string | null;
-  activity_end_date?: string | null;
-  course?: {
-    id?: number | null;
-    name_ar?: string | null;
-    name_en?: string | null;
-  } | null;
-};
+import type { RegistrationRequestItem as ReqItem } from '../types/api';
 
 export default function MyRegistrationRequests() {
-  const { token, isAuthenticated } = useAuth();
-  const [items, setItems] = useState<ReqItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    try {
-      const res = await api.myRegistrations(token);
-      console.log(res);
-      if (res?.ok && Array.isArray(res.items)) {
-        setItems(res.items as ReqItem[]);
-      } else {
-        setItems([]);
-        Alert.alert('تعذّر التحميل', 'حاول مجددًا لاحقًا.');
-      }
-    } catch (e: any) {
-      Alert.alert('خطأ في الاتصال', e?.message || 'يرجى المحاولة مرة أخرى.');
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const onRefresh = useCallback(async () => {
-    if (!token) return;
-    setRefreshing(true);
-    try {
-      const res = await api.myRegistrations(token);
-      if (res?.ok && Array.isArray(res.items)) {
-        setItems(res.items as ReqItem[]);
-      }
-    } finally {
-      setRefreshing(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (isAuthenticated) load();
-    else setLoading(false);
-  }, [isAuthenticated, load]);
+  const {
+    registrationRequests,
+    isAuthenticated,
+    bootstrapLoading,
+    refreshBootstrap,
+  } = useAuth();
+  const items = useMemo(
+    () => registrationRequests.filter(item => item.status === 0),
+    [registrationRequests],
+  );
 
   const formatDate = (s?: string | null, withTime = false) => {
     if (!s) return '—';
@@ -135,7 +84,7 @@ export default function MyRegistrationRequests() {
     );
   }
 
-  if (loading) {
+  if (bootstrapLoading && items.length === 0) {
     return (
       <ThemedBackground>
         <AppLoading style={{ backgroundColor: 'transparent' }} />
@@ -152,7 +101,7 @@ export default function MyRegistrationRequests() {
       <FlatList
         data={items}
         keyExtractor={(it) => String(it.id)}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />}
+        refreshControl={<RefreshControl refreshing={bootstrapLoading} onRefresh={() => refreshBootstrap().catch(() => undefined)} tintColor={colors.gold} colors={[colors.gold]} />}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', color: 'rgba(255, 248, 239, 0.72)', fontFamily: 'NotoKufiArabic-Regular', marginTop: 12 }}>
             لا توجد طلبات بعد
@@ -177,6 +126,7 @@ export default function MyRegistrationRequests() {
 
                       {/* info */}
           <View style={{ marginTop: 10 }}>
+            <Row label="الدورة" value={item.course?.name_ar || item.course?.name_en} />
             <Row label="النشاط" value={`#${item.activity_id}`} />
             {/* created_at with datetime */}
             <Row label="أنشئ" value={formatDate(item.created_at, true)} />

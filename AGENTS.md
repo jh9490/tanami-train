@@ -1,6 +1,6 @@
 # TanamiTrain Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-06-05
+Auto-generated from all feature plans. Last updated: 2026-09-12
 
 ## Active Technologies
 - TypeScript 5.x, React 19.1, React Native 0.80
@@ -21,6 +21,8 @@ Auto-generated from all feature plans. Last updated: 2026-06-05
 - Existing in-memory/local CV draft flow; no new storage (006-menu-nav-reorg)
 - TypeScript 5.x, React 19.1, React Native 0.80 + React Navigation 7, `@react-navigation/material-top-tabs`, existing `react-native-webview` (007-youtube-live-preview)
 - N/A; `live_url` is transient course item data passed through navigation (007-youtube-live-preview)
+- TypeScript 5.0.x, React 19.1, React Native 0.80, Kotlin 2.1 + React Navigation 7, React Context, native `fetch`, Firebase Messaging, Notifee, AsyncStorage 2.2, exact-pinned `react-native-keychain` 10.0.0 (008-phone-onboarding-v2)
+- iOS Keychain/Android Keystore for access token; AsyncStorage only for the non-secret bootstrap snapshot, profile ID, refresh-pending marker, and one-time legacy-token migration source; OTP, password, and onboarding session remain memory-only (008-phone-onboarding-v2)
 
 ## Project Structure
 
@@ -66,9 +68,9 @@ __tests__/
 - Keep `system_context.md` and this file concise and update them only when the working context changes materially.
 
 ## Recent Changes
+- 008-phone-onboarding-v2: Added phone-first OTP onboarding, secure token storage, and authoritative bootstrap planning with React Navigation 7, React Context, Firebase Messaging, Notifee, AsyncStorage 2.2, and `react-native-keychain` 10.0.0
 - 007-youtube-live-preview: Added TypeScript 5.x, React 19.1, React Native 0.80 + React Navigation 7, `@react-navigation/material-top-tabs`, existing `react-native-webview`
 - 005-ats-cv-layout: Added TypeScript 5.x, React 19.1, React Native 0.80 + Existing `react-native-html-to-pdf` export pipeline and current CV service layer
-- 006-menu-nav-reorg: Added TypeScript 5.x, React 19.1, React Native 0.80 + React Navigation 7, `react-native-vector-icons`, existing safe-area utilities
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
