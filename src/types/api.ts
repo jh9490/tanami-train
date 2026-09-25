@@ -3,6 +3,8 @@ export type Phase = 'current' | 'upcoming' | 'previous' | 'all';
 
 export interface CourseItem {
   registration_id: number;
+  activity_id?: number | null;
+  course_id?: number | null;
   live_url?: string | null;
   student: {
     id : number

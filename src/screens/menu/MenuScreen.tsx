@@ -87,7 +87,7 @@ export default function MenuScreen() {
               {isAuthenticated ? 'أهلًا بك' : 'مرحبًا'}
             </Text>
             <Text style={styles.headerSub}>
-              {isAuthenticated ? displayName: 'سجّل الدخول للوصول لكل الميزات'}
+              {isAuthenticated ? displayName : 'سجّل الدخول للوصول لكل الميزات'}
             </Text>
           </View>
           <Icon
@@ -124,7 +124,7 @@ export default function MenuScreen() {
             onPress={() => navigation.navigate('ContactUs')}
           />
 
-         <Row title="موقعنا" icon="place" onPress={openMap} />
+          <Row title="موقعنا" icon="place" onPress={openMap} />
 
           {/* Divider */}
           <View style={styles.divider} />
@@ -147,7 +147,7 @@ export default function MenuScreen() {
 
           {/* Divider */}
           <View style={styles.divider} />
- 
+
 
           {isAuthenticated ? (
             <Row title="تسجيل الخروج" icon="logout" onPress={handleLogout} danger />

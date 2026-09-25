@@ -3,7 +3,7 @@
 /** Base URLs */
 export const BASE_ROOT = 'https://admin.tanamitrain.com';
 export const MOBILE_API_URL = `${BASE_ROOT}/api/mobile-app`;
-const BASE_URL  = MOBILE_API_URL;                  // mobile-app endpoints
+const BASE_URL = MOBILE_API_URL;                  // mobile-app endpoints
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH';
 
@@ -125,17 +125,17 @@ async function request<T>(
 
 /* ----------------------- small JSON fetch utilities ---------------------- */
 
-async function debugJson(url: string, headers: Record<string,string>) {
+async function debugJson(url: string, headers: Record<string, string>) {
   console.log('➡️ GET', url);
-  const res   = await fetch(url, { method: 'GET', headers });
-  const text  = await res.text();
+  const res = await fetch(url, { method: 'GET', headers });
+  const text = await res.text();
   console.log('⬅️', res.status, res.statusText || '', '| body preview:', text.slice(0, 180));
   try { return JSON.parse(text); }
   catch { throw new Error(`HTTP ${res.status} ${res.statusText || ''} (not JSON)`); }
 }
 
 async function jsonFetch(url: string, opts: RequestInit = {}) {
-  const res  = await fetch(url, {
+  const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     ...opts,
   });
@@ -148,7 +148,7 @@ async function jsonFetchWithTimeout(url: string, opts: RequestInit = {}, timeout
   const to = setTimeout(() => controller.abort(), timeoutMs);
   try {
     console.log('[API] →', opts.method || 'GET', url);
-    const res  = await fetch(url, {
+    const res = await fetch(url, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       signal: controller.signal,
       ...opts,
@@ -248,23 +248,30 @@ export const api = {
     request<CertificatesResponse>('my-certificates', 'GET', undefined, token),
 
   async fetchCourseById(token: string | null | undefined, id: string | number) {
-    const headers: Record<string,string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
     const url = `${BASE_URL}/get-course?id=${id}`;
     return debugJson(url, headers) as Promise<GetCourseResponse>;
   },
 
   async fetchActivityFiles(token: string | null | undefined, activityId: string | number) {
-    const headers: Record<string,string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
     const url = `${BASE_URL}/activity-files?id=${activityId}`;
     return debugJson(url, headers);
   },
 
-  async fetchCertificateByStudentActivity(token: string | null | undefined, activityId: string | number, studentId: string | number) {
-    const headers: Record<string,string> = { Accept: 'application/json' };
+  async fetchCertificateByStudentActivity(
+    token: string | null | undefined,
+    activityId: string | number | null | undefined,
+    studentId: string | number,
+    courseId?: string | number | null,
+  ) {
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
-    const url = `${BASE_URL}/certi-by-student-activity?activity_id=${activityId}&student_id=${studentId}`;
+    const courseQuery = courseId == null ? '' : `&course_id=${encodeURIComponent(String(courseId))}`;
+    const activityQuery = activityId == null ? '' : encodeURIComponent(String(activityId));
+    const url = `${BASE_URL}/certi-by-student-activity?student_id=${encodeURIComponent(String(studentId))}&activity_id=${activityQuery}${courseQuery}`;
     return debugJson(url, headers);
   },
 
@@ -328,7 +335,7 @@ export const api = {
   },
 
   // Registrations
-  registerForActivity: (token: string, activity_id: number, online: 0|1 = 0) =>
+  registerForActivity: (token: string, activity_id: number, online: 0 | 1 = 0) =>
     request<RegisterRequestResponse>('register-request', 'POST', { activity_id, online }, token),
 
   myRegistrations: (token: string) =>

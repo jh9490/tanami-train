@@ -39,14 +39,14 @@ export default function MyCoursesScreen({ navigation }: any) {
   );
 
   const onPressItem = (item: CourseItem) => {
-    const courseId = item.course?.id;
+    const courseId = item.course_id ?? item.course?.id;
     const title = item.course?.name_ar || 'دورة';
-    const activityId = item.activity?.id; // 👈 add this
+    const activityId = item.activity_id ?? item.activity?.id;
     const liveUrl = item.activity?.live_url ?? item.live_url ?? undefined;
     // prefer the fetched studentId; if missing, fall back to user.id if you have it
     // const resolvedStudentId = studentId ?? (user as any)?.id ?? undefined;
     // console.log(resolvedStudentId);
-    if (!courseId) return;
+    if (courseId == null) return;
     navigation.navigate('CourseTabs', { courseId, title, activityId, studentId, liveUrl });
   };
 
@@ -90,7 +90,14 @@ export default function MyCoursesScreen({ navigation }: any) {
               />
             }
             keyExtractor={(it, idx) =>
-              String(it.registration_id ?? it.activity?.id ?? it.course?.id ?? idx)
+              String(
+                it.registration_id ??
+                it.activity_id ??
+                it.activity?.id ??
+                it.course_id ??
+                it.course?.id ??
+                idx,
+              )
             }
             renderItem={({ item }) => {
               const title = item.course?.name_ar ?? 'دورة';
