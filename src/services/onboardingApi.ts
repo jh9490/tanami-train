@@ -10,6 +10,7 @@ import type {
   OnboardingVerifyResponse,
   SafeApiErrorMetadata,
 } from '../types/api';
+import {buildSeparatedPhone} from '../util/phone';
 
 export const ONBOARDING_API_URL = `${BASE_ROOT}/api/onboarding`;
 
@@ -123,7 +124,7 @@ function normalizeBootstrap(snapshot: OnboardingBootstrap): OnboardingBootstrap 
 export const onboardingApi = {
   start: (body: OnboardingStartRequest, idempotencyKey: string) =>
     onboardingRequest<OnboardingSessionResponse>('start', 'POST', {
-      body,
+      body: buildSeparatedPhone(body.country_code, body.mobile),
       idempotencyKey,
     }),
 

@@ -13,12 +13,14 @@ import {
   GetCourseResponse,
   Phase,
   Profile,
-  RegisterPushBody,
+  PushInstallationResponse,
+  RegisterPushInstallationBody,
   RegisterRequestResponse,
   RegistrationRequestItem,
   UpdateProfileBody,
 } from '../types/api';
 import { OtpDeliveryMethod } from '../auth/otp';
+import {buildSeparatedPhone} from '../util/phone';
 
 /* ----------------------------- Debug helpers ----------------------------- */
 
@@ -164,6 +166,49 @@ async function jsonFetchWithTimeout(url: string, opts: RequestInit = {}, timeout
   }
 }
 
+async function pushJson<T>(
+  path: 'register' | 'unlink',
+  body: unknown,
+  accessToken?: string | null,
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(`${BASE_ROOT}/api/fcm/${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(accessToken ? {Authorization: `Bearer ${accessToken}`} : {}),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    let json: any;
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      json = {ok: false, raw: text};
+    }
+    if (!res.ok || json?.ok === false) {
+      throw new ApiError(
+        json?.error ?? `HTTP_${res.status}`,
+        res.status,
+        json?.message ?? `push ${path} http ${res.status}`,
+      );
+    }
+    return json as T;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new ApiError('push_timeout', 0, `push ${path} timed out`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 /* -------------------------------- Endpoints ------------------------------ */
 
 function buildOtpBody(
@@ -181,14 +226,15 @@ function buildOtpBody(
 export const api = {
   // Auth
   signup: (
-    mobile: string,
+    countryCode: string,
+    mobileNumber: string,
     password: string,
     email?: string,
   ) =>
     request<{ ok: true; message: string; mobile: string }>(
       'signup',
       'POST',
-      { mobile, password, email },
+      {...buildSeparatedPhone(countryCode, mobileNumber), password, email},
     ),
 
   verify: (mobile: string, code: string) =>
@@ -295,17 +341,23 @@ export const api = {
       buildOtpBody(mobile, 'resend', deliveryMethod),
     ),
 
-  // FCM / Inbox (legacy server paths live under BASE_ROOT)
-  async registerPushToken(body: RegisterPushBody) {
-    const res = await fetch(`${BASE_ROOT}/api/fcm/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text();
-    let json: any; try { json = JSON.parse(text); } catch { json = { ok: false, raw: text }; }
-    if (!res.ok || json?.ok === false) throw new Error(`registerPushToken http ${res.status}`);
-    return json;
+  // FCM / Inbox (server paths live under BASE_ROOT)
+  async registerPushInstallation(
+    body: RegisterPushInstallationBody,
+    accessToken?: string | null,
+  ): Promise<PushInstallationResponse> {
+    return pushJson<PushInstallationResponse>('register', body, accessToken);
+  },
+
+  async unlinkPushInstallation(
+    installationId: string,
+    accessToken: string,
+  ): Promise<PushInstallationResponse> {
+    return pushJson<PushInstallationResponse>(
+      'unlink',
+      {installation_id: installationId},
+      accessToken,
+    );
   },
 
   async inboxAck(body: {
@@ -340,6 +392,24 @@ export const api = {
 
   myRegistrations: (token: string) =>
     request<{ ok: true; items: RegistrationRequestItem[] }>('my-registrations', 'GET', undefined, token),
+
+  // App Update
+  checkForUpdate: async (): Promise<{
+    current_version: string;
+    url?: string;
+    download_url?: string;
+    store_url?: string;
+    play_store_url?: string;
+  }> => {
+    const res = await fetch(`${MOBILE_API_URL}/check-for-update`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      throw new Error(`checkForUpdate http ${res.status}`);
+    }
+    return res.json();
+  },
 
   refreshAccountData: (token: string) =>
     Promise.all([

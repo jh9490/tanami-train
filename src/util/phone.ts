@@ -9,3 +9,22 @@ export const buildE164 = (dial: string, national: string) => {
   const n = stripLeadingZero(digitsOnly(national));
   return `+${d}${n}`;
 };
+
+/**
+ * Keep the API's country code and national mobile number as separate values.
+ * The defensive prefix removal prevents a country code from being duplicated
+ * if a caller accidentally supplies an E.164/full number.
+ */
+export const buildSeparatedPhone = (dial: string, mobile: string) => {
+  const countryCode = digitsOnly(dial);
+  let mobileNumber = digitsOnly(mobile);
+
+  if (countryCode && mobileNumber.startsWith(countryCode)) {
+    mobileNumber = mobileNumber.slice(countryCode.length);
+  }
+
+  return {
+    country_code: countryCode,
+    mobile_number: stripLeadingZero(mobileNumber),
+  };
+};

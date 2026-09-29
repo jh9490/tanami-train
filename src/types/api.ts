@@ -79,14 +79,36 @@ export interface GetCourseResponse {
 }
 
 
-export interface RegisterPushBody  {
-  profile_id: number | null;
-  device_id: string;
+export type PushNotificationPermission =
+  | 'granted'
+  | 'denied'
+  | 'provisional'
+  | 'not_determined'
+  | 'unknown';
+
+export interface RegisterPushInstallationBody {
+  installation_id: string;
+  fcm_token: string;
   platform: 'android' | 'ios' | 'web';
-  token: string;
-  app_version?: string;
+  app_version: string;
+  notification_permission: PushNotificationPermission;
+  locale?: string;
+  timezone?: string;
   device_model?: string;
-};
+  os_version?: string;
+}
+
+export interface PushInstallationResponse {
+  ok: true;
+  installation_id: string;
+  device_row_id: number;
+  profile_id: number | null;
+  linked_profile: number | null;
+  audience: 'guest' | 'authenticated';
+  active: boolean;
+  notification_permission: PushNotificationPermission;
+  last_seen_at: string;
+}
 
 
 

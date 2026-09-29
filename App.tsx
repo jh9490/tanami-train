@@ -13,17 +13,16 @@ import SplashScreen from './src/screens/SplashScreen';
 import AppNavigator from './src/navigation/AppNavigator';
 
 import { initNotifications } from './src/services/notifications';
-import messaging from '@react-native-firebase/messaging';
-import { api } from './src/services/api';
-import { getOrCreateDeviceId } from './src/util/deviceId';
+import {startPushInstallationService} from './src/services/pushInstallation';
 import { useAuth } from './src/context/AuthContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { configureAppRTL, rtlStyles } from './src/theme/rtl';
 import { HISTORY_LINK_STATUS_CHANGED_EVENT } from './src/constants/onboarding';
+import {checkAndPromptForUpdate} from './src/util/appUpdate';
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
-  const { user, profile, isAuthenticated, refreshBootstrap } = useAuth();
+  const {refreshBootstrap} = useAuth();
 
   const appendStyleDefault = (Component: any, stylePatch: object) => {
     Component.defaultProps = Component.defaultProps || {};
@@ -41,6 +40,14 @@ const App = () => {
   useEffect(() => {
     configureAppRTL();
   }, []);
+
+  // Check once per launch after the splash screen. Automatic checks are quiet
+  // when the installed version is current or the device is offline.
+  useEffect(() => {
+    if (!showSplash) {
+      checkAndPromptForUpdate(undefined, {showUpToDate: false}).catch(() => undefined);
+    }
+  }, [showSplash]);
 
   // --- Disable font scaling globally ---
   useEffect(() => {
@@ -85,14 +92,9 @@ const App = () => {
 
   // --- Notifications setup ---
   useEffect(() => {
-    console.log(
-      '[Auth] isAuthenticated=',
-      isAuthenticated,
-      ' profileId=',
-      isAuthenticated ? profile?.id : null
-    );
-
-    let cleanup = () => {};
+    let cancelled = false;
+    let cleanupNotifications = () => {};
+    let cleanupPushInstallation = () => {};
     if (!showSplash) {
       (async () => {
         const handleNotificationData = async (data: Record<string, string>) => {
@@ -101,23 +103,7 @@ const App = () => {
           }
         };
 
-        cleanup = await initNotifications({
-          // fires on first token + any refresh
-          onToken: async (token) => {
-            console.log('FCM token:', token);
-            try {
-              const deviceId = await getOrCreateDeviceId();
-              await api.registerPushToken({
-                profile_id: null, // guest by default — real profileId used later inside notifications.ts
-                device_id: deviceId,
-                platform: 'android',
-                token,
-                app_version: '1.0.1',
-              });
-            } catch (e) {
-              console.log('registerPushToken failed:', e);
-            }
-          },
+        cleanupNotifications = await initNotifications({
           onMessage: handleNotificationData,
           onOpen: async (data) => {
             console.log('Opened from notification:', data);
@@ -128,16 +114,20 @@ const App = () => {
             // }
           },
         });
+        cleanupPushInstallation = await startPushInstallationService();
 
-        try {
-          await messaging().subscribeToTopic('general');
-        } catch (e) {
-          console.log('subscribeToTopic failed:', e);
+        if (cancelled) {
+          cleanupNotifications();
+          cleanupPushInstallation();
         }
       })();
     }
-    return () => cleanup();
-  }, [showSplash, isAuthenticated, profile?.id, refreshBootstrap, user?.id]);
+    return () => {
+      cancelled = true;
+      cleanupNotifications();
+      cleanupPushInstallation();
+    };
+  }, [showSplash, refreshBootstrap]);
 
   return (
     <GestureHandlerRootView style={[{ flex: 1 }, rtlStyles.screen]}>

@@ -70,7 +70,7 @@ const SignUpScreen: React.FC<any> = ({ navigation }) => {
 
     setBusy(true);
     try {
-      await signUp(fullMobile, password, email.trim() || undefined);
+      await signUp(country.dial, mobileLocal, password, email.trim() || undefined);
       await api.sendOtp(fullMobile, 'initial');
 
       navigation.navigate('OtpVerify', {
