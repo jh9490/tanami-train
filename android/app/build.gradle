@@ -88,8 +88,8 @@ android {
         applicationId "com.tanamitrain"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 36
-        versionName "1.1.13"
+        versionCode 38
+        versionName "1.1.15"
     }
 
     signingConfigs {

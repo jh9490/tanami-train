@@ -1,21 +1,30 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  ImageBackground,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { api, ApiError } from '../../services/api';
 import {
   canRequestOnlineRegistration,
   canRequestCourseRegistration,
   registrationErrorMessage,
 } from '../../util/courseRegistration';
+import {
+  buildRegistrationPricingMessage,
+  formatFee,
+  getPricingLabels,
+  type ActivityType,
+} from '../../util/activityPricing';
 
 export type CourseLite = {
   id: string;
@@ -29,6 +38,10 @@ export type CourseLite = {
   endDate?: string | null;
   live?: boolean | null;
   cost?: number | null;
+  activityType?: ActivityType;
+  certificateCost?: number | null;
+  registrationOpen?: boolean;
+  allowJoinAfterStart?: boolean;
 };
 
 type BaseProps = {
@@ -41,6 +54,8 @@ type BaseProps = {
   onActivityUnavailable?: (activityId: string, reason: 'deleted' | 'closed') => void | Promise<void>;
   onOnlineUnavailable?: (activityId: string) => void;
   onUnauthorized?: () => void | Promise<void>;
+  courseSequence?: CourseLite[];
+  onCourseChange?: (course: CourseLite) => void;
 };
 
 type Tabs = 'head' | 'details' | 'poster' | 'register';
@@ -89,34 +104,71 @@ export default function CourseDialog({
   onActivityUnavailable,
   onOnlineUnavailable,
   onUnauthorized,
+  courseSequence = [],
+  onCourseChange,
 }: Props) {
   const registrationEnabled = canRequestCourseRegistration(
     isAuthenticated,
-    course?.live,
+    course?.registrationOpen,
   );
+  const showRegistrationTab = isAuthenticated;
   const [onlineRejected, setOnlineRejected] = useState(false);
   const onlineEnabled = canRequestOnlineRegistration(course?.live) && !onlineRejected;
   const defaultTabs: Tabs[] = [
     'head',
     'details',
     'poster',
-    ...(registrationEnabled ? (['register'] as const) : []),
+    ...(showRegistrationTab ? (['register'] as const) : []),
   ];
   const tabs: Tabs[] = (enabledTabs?.length ? enabledTabs : defaultTabs).filter(
-    candidate => candidate !== 'register' || registrationEnabled,
+    candidate => candidate !== 'register' || showRegistrationTab,
   );
 
   const [tab, setTab] = useState<Tabs>(initialTab);
   const [mode, setMode] = useState<'onsite' | 'online'>('onsite');
+  const [certificateRequested, setCertificateRequested] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const c = course;
+  const activityType = c?.activityType ?? 'course';
+  const isInitiative = activityType === 'initiative';
+  const pricingLabels = getPricingLabels('ar');
   const bullets = useMemo(() => cleanToBullets(c?.headLines), [c?.headLines]);
+  const goToAdjacentCourse = useCallback(
+    (direction: -1 | 1) => {
+      if (!course || !onCourseChange || courseSequence.length < 2) return;
+      const currentIndex = courseSequence.findIndex(item => item.id === course.id);
+      if (currentIndex < 0) return;
+      const nextIndex = (currentIndex + direction + courseSequence.length) % courseSequence.length;
+      onCourseChange(courseSequence[nextIndex]);
+    },
+    [course, courseSequence, onCourseChange],
+  );
+  const courseSwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          courseSequence.length > 1 &&
+          Math.abs(gesture.dx) > 10 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          courseSequence.length > 1 &&
+          Math.abs(gesture.dx) > 10 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
+        onPanResponderRelease: (_, gesture) => {
+          if (Math.abs(gesture.dx) < 35) return;
+          goToAdjacentCourse(gesture.dx < 0 ? 1 : -1);
+        },
+        onPanResponderTerminationRequest: () => false,
+      }),
+    [courseSequence.length, goToAdjacentCourse],
+  );
 
   useEffect(() => {
     if (!visible) return;
     setTab(tabs.includes(initialTab) ? initialTab : tabs[0]);
     setMode('onsite');
+    setCertificateRequested(false);
     setOnlineRejected(false);
   // Reset the dialog for each newly opened course. The enabled tab list is
   // supplied declaratively by the caller and does not need to trigger a reset.
@@ -136,7 +188,7 @@ export default function CourseDialog({
     </View>
   );
 
-  const handleRegister = async () => {
+  const submitRegistration = async () => {
     if (!token) {
       Alert.alert('مطلوب تسجيل الدخول', 'الرجاء تسجيل الدخول لإرسال طلب التسجيل.');
       return;
@@ -148,8 +200,29 @@ export default function CourseDialog({
     }
     setSubmitting(true);
     try {
+      const refreshed = await api.getActivity(activityId, token);
+      const refreshedActivity =
+        (refreshed as any)?.activity ??
+        (refreshed as any)?.item ??
+        (refreshed as any)?.data ??
+        (refreshed as any)?.result ??
+        refreshed;
+      if (refreshedActivity?.registration_open !== true) {
+        await onActivityUnavailable?.(c.id, 'closed');
+        onClose();
+        Alert.alert(
+          'التسجيل غير متاح',
+          'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.',
+        );
+        return;
+      }
       const online = mode === 'online' && onlineEnabled ? 1 : 0;
-      const res = await api.registerForActivity(token, activityId, online as 0 | 1);
+      const res = await api.registerForActivity(
+        token,
+        activityId,
+        online as 0 | 1,
+        isInitiative ? certificateRequested : undefined,
+      );
       const ok = (res as any)?.ok;
       const msg =
         ok && (res as any).message === 'already_exists'
@@ -184,12 +257,28 @@ export default function CourseDialog({
     }
   };
 
+  const handleRegister = () => {
+    const message = buildRegistrationPricingMessage({
+      activityType,
+      activityFee: c.cost ?? null,
+      certificateFee: c.certificateCost ?? null,
+    });
+    const certificateChoice = isInitiative
+      ? `\n${certificateRequested ? 'تم اختيار طلب شهادة.' : 'لم يتم اختيار طلب شهادة.'}`
+      : '';
+
+    Alert.alert('تأكيد التسجيل', `${message}${certificateChoice}`, [
+      { text: 'إلغاء', style: 'cancel' },
+      { text: 'تأكيد وإرسال', onPress: () => void submitRegistration() },
+    ]);
+  };
+
   // Build tab list UI entries based on `tabs`
   const tabEntries = [
     { k: 'head' as const, t: 'العناوين' },
     { k: 'details' as const, t: 'التفاصيل' },
     { k: 'poster' as const, t: 'الملصق' },
-    ...(registrationEnabled ? [{ k: 'register' as const, t: 'التسجيل' }] : []),
+    ...(showRegistrationTab ? [{ k: 'register' as const, t: 'التسجيل' }] : []),
   ].filter((t) => tabs.includes(t.k));
 
   return (
@@ -197,16 +286,114 @@ export default function CourseDialog({
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
         <Pressable onPress={onClose} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }} />
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 18 }}>
-          <View style={{ backgroundColor: '#fff1e2', borderRadius: 16, overflow: 'hidden', maxHeight: '82%' }}>
-            {/* header */}
-            <View style={{ padding: 14, backgroundColor: '#0f4f30' }}>
-              <Text
-                style={{ color: '#eceadf', fontFamily: 'NotoKufiArabic-Bold', fontSize: 14, textAlign: 'center' }}
-                numberOfLines={2}
+          <View
+            {...courseSwipeResponder.panHandlers}
+            style={{ backgroundColor: '#fff1e2', borderRadius: 22, overflow: 'hidden', maxHeight: '96%' }}
+          >
+            {/* Poster-led movie-style header */}
+            <ImageBackground
+              source={c.image ? { uri: c.image } : undefined}
+              resizeMode="cover"
+              style={{ height: c.image ? 270 : 160, backgroundColor: '#0f4f30' }}
+            >
+              <LinearGradient
+                colors={['rgba(12,42,32,0.08)', 'rgba(12,42,32,0.3)', 'rgba(12,42,32,0.96)']}
+                style={{ flex: 1, justifyContent: 'space-between', padding: 16 }}
               >
-                {title}
-              </Text>
-            </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <View
+                    style={{
+                      borderRadius: 7,
+                      backgroundColor: isInitiative ? '#cbae82' : 'rgba(12,42,32,0.92)',
+                      paddingVertical: 6,
+                      paddingHorizontal: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: isInitiative ? '#0c2a20' : '#fff',
+                        fontFamily: 'NotoKufiArabic-Bold',
+                        fontSize: 11,
+                      }}
+                    >
+                      {isInitiative ? 'مبادرة' : 'دورة'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="إغلاق"
+                    onPress={onClose}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 20, lineHeight: 22 }}>×</Text>
+                  </TouchableOpacity>
+                </View>
+                {courseSequence.length > 1 ? (
+                  <View
+                    pointerEvents="box-none"
+                    style={{
+                      position: 'absolute',
+                      top: '42%',
+                      left: 10,
+                      right: 10,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="الدورة السابقة"
+                      onPress={() => goToAdjacentCourse(-1)}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 28, lineHeight: 30 }}>‹</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="الدورة التالية"
+                      onPress={() => goToAdjacentCourse(1)}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 28, lineHeight: 30 }}>›</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+                <View>
+                  <Text
+                    style={{ color: '#fff', fontFamily: 'NotoKufiArabic-Bold', fontSize: 19, lineHeight: 30, textAlign: 'right' }}
+                    numberOfLines={2}
+                  >
+                    {title}
+                  </Text>
+                  <Text
+                    style={{ color: 'rgba(255,255,255,0.78)', fontFamily: 'NotoKufiArabic-Regular', fontSize: 11, textAlign: 'right' }}
+                  >
+                    {[c.date, c.days ? `${c.days} أيام` : null].filter(Boolean).join('  •  ')}
+                  </Text>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
 
             {/* tabs */}
             {tabEntries.length > 1 && (
@@ -284,7 +471,31 @@ export default function CourseDialog({
                         <InfoRow label="التاريخ" value={c.date} />
                         <InfoRow label="تاريخ الانتهاء" value={c.endDate} />
                         <InfoRow label="الحالة" value={c.live ? 'مباشر' : '—'} />
-                        <InfoRow label="التكلفة" value={typeof c.cost === 'number' ? `${c.cost} ل.س` : '—'} />
+                        <InfoRow
+                          label={pricingLabels.activityType}
+                          value={isInitiative ? pricingLabels.initiative : pricingLabels.course}
+                        />
+                        <InfoRow label={pricingLabels.activityFee} value={`${formatFee(c.cost ?? null)} ل.س`} />
+                        {isInitiative && (
+                          <>
+                            <InfoRow
+                              label={pricingLabels.certificateFee}
+                              value={`${formatFee(c.certificateCost ?? null)} ل.س`}
+                            />
+                            <Text
+                              style={{
+                                color: '#0f4f30',
+                                fontFamily: 'NotoKufiArabic-Regular',
+                                fontSize: 11,
+                                lineHeight: 18,
+                                textAlign: 'center',
+                                marginTop: 8,
+                              }}
+                            >
+                              {c.cost === 0 ? pricingLabels.separatePayment : pricingLabels.paidAttendance}
+                            </Text>
+                          </>
+                        )}
                       </>
                     )}
                   </View>
@@ -294,7 +505,40 @@ export default function CourseDialog({
                 {tab === 'poster' && tabs.includes('poster') && (
                   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                     {c.image ? (
-                      <Image source={{ uri: c.image }} style={{ width: '100%', height: 260, borderRadius: 8 }} resizeMode="contain" />
+                      <View style={{ width: '100%', height: 260, position: 'relative' }}>
+                        <Image
+                          source={{ uri: c.image }}
+                          style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                          resizeMode="contain"
+                        />
+                        {isInitiative ? (
+                          <View
+                            pointerEvents="none"
+                            style={{
+                              position: 'absolute',
+                              top: 12,
+                              right: 0,
+                              minWidth: 76,
+                              paddingVertical: 7,
+                              paddingHorizontal: 13,
+                              borderTopLeftRadius: 12,
+                              borderBottomLeftRadius: 12,
+                              backgroundColor: '#cbae82',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: '#0c2a20',
+                                fontFamily: 'NotoKufiArabic-Bold',
+                                fontSize: 11,
+                              }}
+                            >
+                              مبادرة
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
                     ) : (
                       <Text
                         style={{ color: '#0f4f30', fontFamily: 'NotoKufiArabic-Regular', fontSize: 12, textAlign: 'center' }}
@@ -307,15 +551,18 @@ export default function CourseDialog({
 
                 {/* register */}
                 {tab === 'register' && tabs.includes('register') && (
-                  <View
+                  <ScrollView
+                    showsVerticalScrollIndicator
                     style={{
                       marginTop: 6,
-                      padding: 10,
                       borderWidth: 1,
                       borderColor: '#eadac3',
                       borderRadius: 10,
                       backgroundColor: '#f7efe5',
                       flex: 1,
+                    }}
+                    contentContainerStyle={{
+                      padding: 10,
                       justifyContent: 'center',
                     }}
                   >
@@ -329,6 +576,23 @@ export default function CourseDialog({
                       }}
                     >
                       طلب تسجيل
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: '#0f4f30',
+                        fontFamily: 'NotoKufiArabic-Regular',
+                        fontSize: 11,
+                        lineHeight: 18,
+                        marginBottom: 10,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {buildRegistrationPricingMessage({
+                        activityType,
+                        activityFee: c.cost ?? null,
+                        certificateFee: c.certificateCost ?? null,
+                      })}
                     </Text>
 
                     {/* حضوري / أونلاين */}
@@ -373,16 +637,114 @@ export default function CourseDialog({
                       })}
                     </View>
 
+                    {isInitiative && (
+                      <View style={{ marginBottom: 12 }}>
+                        <TouchableOpacity
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: certificateRequested }}
+                          onPress={() => setCertificateRequested(value => !value)}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 4,
+                              borderWidth: 2,
+                              borderColor: '#0f4f30',
+                              backgroundColor: certificateRequested ? '#0f4f30' : 'transparent',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {certificateRequested && (
+                              <Text style={{ color: '#fff', fontSize: 15, lineHeight: 17 }}>✓</Text>
+                            )}
+                          </View>
+                          <Text
+                            style={{
+                              color: '#0f4f30',
+                              fontFamily: 'NotoKufiArabic-Bold',
+                              fontSize: 12,
+                            }}
+                          >
+                            أرغب في الحصول على شهادة
+                          </Text>
+                        </TouchableOpacity>
+
+                        <Text
+                          style={{
+                            color: '#6b5d4d',
+                            fontFamily: 'NotoKufiArabic-Regular',
+                            fontSize: 10,
+                            lineHeight: 17,
+                            textAlign: 'center',
+                            marginTop: 7,
+                          }}
+                        >
+                          الحضور لا يتطلب شراء الشهادة. سيتم دفع رسوم الشهادة بشكل منفصل.
+                        </Text>
+
+                        {certificateRequested && (
+                          <View style={{ marginTop: 7 }}>
+                            {c.certificateCost !== null && c.certificateCost !== undefined && (
+                              <Text
+                                style={{
+                                  color: '#0f4f30',
+                                  fontFamily: 'NotoKufiArabic-Bold',
+                                  fontSize: 11,
+                                  textAlign: 'center',
+                                }}
+                              >
+                                رسوم الشهادة: {formatFee(c.certificateCost)} ل.س
+                              </Text>
+                            )}
+                            <Text
+                              style={{
+                                color: '#8a5a20',
+                                fontFamily: 'NotoKufiArabic-Regular',
+                                fontSize: 10,
+                                lineHeight: 17,
+                                textAlign: 'center',
+                                marginTop: 4,
+                              }}
+                            >
+                              ملاحظة: أولوية القبول للطلاب الراغبين في الحصول على شهادة.
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
                     <View style={{ alignItems: 'center' }}>
+                      {!registrationEnabled && (
+                        <Text
+                          style={{
+                            color: '#8a5a20',
+                            fontFamily: 'NotoKufiArabic-Regular',
+                            fontSize: 11,
+                            lineHeight: 18,
+                            textAlign: 'center',
+                            marginBottom: 10,
+                          }}
+                        >
+                          {'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.'}
+                        </Text>
+                      )}
                       <TouchableOpacity
                         onPress={handleRegister}
-                        disabled={submitting}
+                        disabled={submitting || !registrationEnabled}
                         style={{
                           backgroundColor: '#0f4f30',
                           paddingVertical: 10,
                           paddingHorizontal: 18,
                           borderRadius: 10,
-                          opacity: submitting ? 0.7 : 1,
+                          opacity: submitting || !registrationEnabled ? 0.5 : 1,
                           minWidth: 160,
                           alignItems: 'center',
                         }}
@@ -396,7 +758,7 @@ export default function CourseDialog({
                         )}
                       </TouchableOpacity>
                     </View>
-                  </View>
+                  </ScrollView>
                 )}
               </View>
             </View>

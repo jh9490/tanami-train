@@ -128,6 +128,12 @@ export default function MyRegistrationRequests() {
           <View style={{ marginTop: 10 }}>
             <Row label="الدورة" value={item.course?.name_ar || item.course?.name_en} />
             <Row label="النشاط" value={`#${item.activity_id}`} />
+            {typeof item.certificate_requested === 'boolean' && (
+              <Row
+                label="طلب الشهادة"
+                value={item.certificate_requested ? 'تم طلب شهادة' : 'لم يتم طلب شهادة'}
+              />
+            )}
             {/* created_at with datetime */}
             <Row label="أنشئ" value={formatDate(item.created_at, true)} />
             {/* updated_at with datetime */}

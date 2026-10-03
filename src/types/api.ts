@@ -144,7 +144,11 @@ export type UpdateProfileBody = Partial<{
 }>;
 
 
-export type RegisterRequestBody = { activity_id: number; online?: 0|1 };
+export type RegisterRequestBody = {
+  activity_id: number;
+  online?: 0 | 1;
+  certificate_requested?: boolean;
+};
 export type RegisterRequestResponse = {
   ok: true;
   message?: string;
@@ -153,6 +157,7 @@ export type RegisterRequestResponse = {
     user_id: number;
     activity_id: number;
     online: number;
+    certificate_requested?: boolean;
     status: number;
   };
 };
@@ -162,6 +167,7 @@ export interface RegistrationRequestItem {
   user_id: number;
   activity_id: number;
   online: 0 | 1;
+  certificate_requested?: boolean;
   status: 0 | 1 | 2;
   created_at?: string | null;
   updated_at?: string | null;

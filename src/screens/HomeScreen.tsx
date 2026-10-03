@@ -30,10 +30,12 @@ import { getOnboardingEntryRoute } from '../constants/onboarding';
 import { TANAMI_WHATSAPP_URL } from '../constants/contact';
 import { isLiveActivity } from '../util/courseRegistration';
 import { resolveMediaUrl } from '../util/mediaUrl';
+import { normalizeActivityType, normalizeFee } from '../util/activityPricing';
 
 I18nManager.forceRTL(true);
 
 const PAGE_PADDING = 16;
+const COURSE_GRID_GAP = 10;
 const COLORS = {
   green: '#0f4f30',
   greenDark: '#0c2a20',
@@ -221,11 +223,14 @@ const CourseSectionBlock = styled.View`
   align-items: center;
 `;
 
-const RadarStaticRow = styled.View`
+const CourseGrid = styled.View`
   width: 100%;
   flex-direction: row;
+  flex-wrap: wrap;
   justify-content: center;
-  padding-horizontal: ${PAGE_PADDING}px;
+  row-gap: 14px;
+  column-gap: ${COURSE_GRID_GAP}px;
+  padding: 0 ${PAGE_PADDING}px;
 `;
 
 const EmptyCoursesText = styled.Text`
@@ -239,10 +244,17 @@ const EmptyCoursesText = styled.Text`
 const RadarCard = styled.TouchableOpacity<{ w: number; h: number }>`
   width: ${({ w }) => w}px;
   height: ${({ h }) => h}px;
-  border-radius: 0px;
+  background-color: transparent;
+`;
+
+const RadarPoster = styled.View<{ h: number }>`
+  width: 100%;
+  height: ${({ h }) => h}px;
+  border-radius: 16px;
   overflow: hidden;
   background-color: #eee6dc;
-  margin-horizontal: 5px;
+  border-width: 1px;
+  border-color: rgba(255, 248, 239, 0.16);
 `;
 
 const RadarImageBg = styled(ImageBackground)`
@@ -250,41 +262,71 @@ const RadarImageBg = styled(ImageBackground)`
   height: 100%;
 `;
 
-const RadarPill = styled.View`
-  position: absolute;
-  top: 14px;
-  align-self: center;
-  min-width: 92px;
-  max-width: 86%;
-  height: 36px;
-  border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.88);
+const RadarPill = styled.View<{ $status: 'live' | 'current' | 'upcoming' }>`
+  min-width: 62px;
+  min-height: 30px;
+  border-radius: 7px;
+  background-color: ${({ $status }) =>
+    $status === 'live' ? '#d72d2d' : $status === 'current' ? '#198754' : '#2563b8'};
   align-items: center;
   justify-content: center;
-  padding-horizontal: 14px;
+  padding: 5px 9px;
 `;
 
 const RadarPillText = styled.Text`
-  color: ${COLORS.ink};
+  color: ${COLORS.white};
   font-family: 'NotoKufiArabic-Bold';
-  font-size: 12px;
+  font-size: 10px;
+`;
+
+const InitiativeBadge = styled.View<{ $initiative: boolean }>`
+  min-width: 62px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background-color: ${({ $initiative }) => ($initiative ? '#cbae82' : 'rgba(12, 42, 32, 0.94)')};
+  align-items: center;
+  justify-content: center;
+`;
+
+const InitiativeBadgeText = styled.Text<{ $initiative: boolean }>`
+  color: ${({ $initiative }) => ($initiative ? COLORS.greenDark : COLORS.white)};
+  font-family: 'NotoKufiArabic-Bold';
+  font-size: 10px;
+`;
+
+const RadarBadges = styled.View`
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 2;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const RadarCardInfo = styled.View`
+  padding-top: 9px;
 `;
 
 const RadarTitle = styled.Text`
   color: ${COLORS.white};
   font-family: 'NotoKufiArabic-Bold';
-  font-size: 17px;
-  line-height: 27px;
+  font-size: 12px;
+  line-height: 19px;
   text-align: center;
+  writing-direction: rtl;
 `;
 
 const RadarMeta = styled.Text`
-  margin-top: 3px;
+  margin-top: 1px;
   color: rgba(255, 255, 255, 0.86);
   font-family: 'NotoKufiArabic-Regular';
-  font-size: 11px;
-  line-height: 18px;
+  font-size: 9px;
+  line-height: 15px;
   text-align: center;
+  writing-direction: rtl;
 `;
 
 const SocialSection = styled.View`
@@ -361,10 +403,11 @@ export default function HomeScreen() {
     [courses],
   );
   const heroHeight = Math.max(245, Math.min(330, Math.round(windowWidth * 0.68)));
-  const compactRadarCardW = Math.floor((windowWidth - PAGE_PADDING * 2 - 12) / 2);
-  const carouselRadarCardW = Math.max(210, Math.min(270, Math.round(windowWidth * 0.68)));
-  const radarCardW = happeningItems.length <= 2 ? compactRadarCardW : carouselRadarCardW;
-  const radarCardH = Math.round(radarCardW * 1.34);
+  const radarCardW = Math.floor(
+    (windowWidth - PAGE_PADDING * 2 - COURSE_GRID_GAP) / 2,
+  );
+  const radarPosterH = Math.round(radarCardW * 1.42);
+  const radarCardH = radarPosterH + 66;
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -415,7 +458,13 @@ export default function HomeScreen() {
           date: activity.date ?? null,
           endDate: activity.end_date ?? null,
           live: isLiveActivity(activity.live),
-          cost: activity.course?.cost ?? null,
+          cost: normalizeFee(activity.cost ?? activity.pricing?.activity_fee ?? activity.course?.cost),
+          activityType: normalizeActivityType(activity.activity_type),
+          certificateCost: normalizeFee(
+            activity.certificate_cost ?? activity.pricing?.certificate_fee,
+          ),
+          registrationOpen: activity.registration_open === true,
+          allowJoinAfterStart: activity.allow_join_after_start === true,
         };
 
         nextCourses[bucket].push(item);
@@ -458,15 +507,19 @@ export default function HomeScreen() {
     setSelectedCourse(previous => previous?.id === activityId ? { ...previous, live: false } : previous);
   }, []);
 
-  const getCourseStatusLabel = (item: CourseLite) => {
-    if (item.live) return 'مباشر';
+  const getCourseStatus = (item: CourseLite): { key: 'live' | 'current' | 'upcoming'; label: string } => {
+    if (item.live) return { key: 'live', label: 'مباشر' };
     const isCurrent = courses.current.some(course => course.id === item.id);
-    return isCurrent ? 'حاليًا' : 'قادم';
+    return isCurrent
+      ? { key: 'current', label: 'حاليًا' }
+      : { key: 'upcoming', label: 'قادم' };
   };
 
   const renderRadarCard = (item: CourseLite) => {
     const title = item.nameAr || item.title || '—';
     const metaParts = [item.date, item.days ? `${item.days} أيام` : null].filter(Boolean);
+    const status = getCourseStatus(item);
+    const isInitiativeCard = item.activityType === 'initiative';
 
     return (
       <RadarCard
@@ -479,30 +532,34 @@ export default function HomeScreen() {
           setDetailsOpen(true);
         }}
       >
-        {item.image ? (
-          <RadarImageBg source={{ uri: item.image }} resizeMode="cover">
-            <LinearGradient
-              colors={['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.72)']}
-              style={{ flex: 1, justifyContent: 'space-between', padding: 14 }}
-            >
-              <RadarPill pointerEvents="none">
-                <RadarPillText numberOfLines={1}>{getCourseStatusLabel(item)}</RadarPillText>
-              </RadarPill>
-              <View />
-              <View pointerEvents="none">
-                <RadarTitle numberOfLines={2}>{title}</RadarTitle>
-                {metaParts.length ? <RadarMeta numberOfLines={1}>{metaParts.join(' • ')}</RadarMeta> : null}
-              </View>
-            </LinearGradient>
-          </RadarImageBg>
-        ) : (
-          <View style={{ flex: 1 }}>
-            <PlaceholderPoster width={radarCardW} height={radarCardH} />
-            <RadarPill pointerEvents="none">
-              <RadarPillText numberOfLines={1}>{getCourseStatusLabel(item)}</RadarPillText>
+        <RadarPoster h={radarPosterH}>
+          <RadarBadges pointerEvents="none">
+            <InitiativeBadge $initiative={isInitiativeCard}>
+              <InitiativeBadgeText $initiative={isInitiativeCard}>
+                {isInitiativeCard ? 'مبادرة' : 'دورة'}
+              </InitiativeBadgeText>
+            </InitiativeBadge>
+            <RadarPill $status={status.key}>
+              <RadarPillText numberOfLines={1}>{status.label}</RadarPillText>
             </RadarPill>
-          </View>
-        )}
+          </RadarBadges>
+          {item.image ? (
+            <RadarImageBg source={{ uri: item.image }} resizeMode="cover">
+              <LinearGradient
+                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.04)', 'rgba(0,0,0,0.2)']}
+                style={{ flex: 1 }}
+              />
+            </RadarImageBg>
+          ) : (
+            <View style={{ flex: 1 }}>
+              <PlaceholderPoster width={radarCardW} height={radarPosterH} />
+            </View>
+          )}
+        </RadarPoster>
+        <RadarCardInfo pointerEvents="none">
+          <RadarTitle numberOfLines={1}>{title}</RadarTitle>
+          {metaParts.length ? <RadarMeta numberOfLines={1}>{metaParts.join(' • ')}</RadarMeta> : null}
+        </RadarCardInfo>
       </RadarCard>
     );
   };
@@ -666,42 +723,11 @@ export default function HomeScreen() {
       return <EmptyCoursesText>لا توجد دورات حالية أو قادمة لعرضها حاليًا</EmptyCoursesText>;
     }
 
-    if (happeningItems.length <= 2) {
-      return (
-        <CourseSectionBlock>
-          <RadarStaticRow>
-            {happeningItems.map(item => (
-              <View key={item.id} style={{ marginHorizontal: 3 }}>
-                {renderRadarCard(item)}
-              </View>
-            ))}
-          </RadarStaticRow>
-        </CourseSectionBlock>
-      );
-    }
-
     return (
       <CourseSectionBlock>
-        <Carousel<CourseLite>
-          width={windowWidth}
-          height={radarCardH}
-          style={{ width: windowWidth }}
-          loop={happeningItems.length > 2}
-          autoPlay={happeningItems.length > 2}
-          autoPlayInterval={4700}
-          scrollAnimationDuration={1600}
-          data={happeningItems}
-          onConfigurePanGesture={gesture => {
-            'worklet';
-            gesture.activeOffsetX([-20, 20]);
-            gesture.failOffsetY([-12, 12]);
-          }}
-          renderItem={({ item }) => (
-            <View style={{ width: windowWidth, alignItems: 'center' }}>
-              {renderRadarCard(item)}
-            </View>
-          )}
-        />
+        <CourseGrid>
+          {happeningItems.map(item => renderRadarCard(item))}
+        </CourseGrid>
       </CourseSectionBlock>
     );
   };
@@ -761,6 +787,8 @@ export default function HomeScreen() {
       <CourseDialog
         visible={detailsOpen}
         course={selectedCourse}
+        courseSequence={happeningItems}
+        onCourseChange={setSelectedCourse}
         onClose={() => setDetailsOpen(false)}
         isAuthenticated={isAuthenticated}
         token={token}

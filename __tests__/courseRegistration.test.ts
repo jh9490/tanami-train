@@ -18,9 +18,10 @@ describe('course registration eligibility', () => {
   );
 
   it('allows authenticated users to request onsite registration for any open activity', () => {
-    expect(canRequestCourseRegistration(true, 1)).toBe(true);
-    expect(canRequestCourseRegistration(true, 0)).toBe(true);
-    expect(canRequestCourseRegistration(false, 1)).toBe(false);
+    expect(canRequestCourseRegistration(true, true)).toBe(true);
+    expect(canRequestCourseRegistration(true, false)).toBe(false);
+    expect(canRequestCourseRegistration(true, undefined)).toBe(false);
+    expect(canRequestCourseRegistration(false, true)).toBe(false);
   });
 
   it('allows online registration only for live activities', () => {
@@ -32,7 +33,7 @@ describe('course registration eligibility', () => {
 
   it.each([
     ['activity_not_found', 'لم يعد هذا النشاط متاحًا.'],
-    ['activity_not_open_for_registration', 'هذا النشاط غير مفتوح للتسجيل حاليًا.'],
+    ['activity_not_open_for_registration', 'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.'],
     ['online_registration_unavailable', 'التسجيل أونلاين غير متاح لهذا النشاط. اختر الحضور المباشر.'],
     ['activity_id_required', 'تعذر إرسال الطلب بسبب خطأ في بيانات النشاط.'],
     ['unauthorized', 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.'],

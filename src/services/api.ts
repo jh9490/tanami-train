@@ -387,8 +387,30 @@ export const api = {
   },
 
   // Registrations
-  registerForActivity: (token: string, activity_id: number, online: 0 | 1 = 0) =>
-    request<RegisterRequestResponse>('register-request', 'POST', { activity_id, online }, token),
+  getActivity: (activityId: number, token?: string) =>
+    request<Record<string, any>>(
+      `get-activity?activity_id=${encodeURIComponent(String(activityId))}`,
+      'GET',
+      undefined,
+      token,
+    ),
+
+  registerForActivity: (
+    token: string,
+    activity_id: number,
+    online: 0 | 1 = 0,
+    certificate_requested?: boolean,
+  ) =>
+    request<RegisterRequestResponse>(
+      'register-request',
+      'POST',
+      {
+        activity_id,
+        online,
+        ...(certificate_requested === undefined ? {} : { certificate_requested }),
+      },
+      token,
+    ),
 
   myRegistrations: (token: string) =>
     request<{ ok: true; items: RegistrationRequestItem[] }>('my-registrations', 'GET', undefined, token),
