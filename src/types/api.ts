@@ -3,6 +3,8 @@ export type Phase = 'current' | 'upcoming' | 'previous' | 'all';
 
 export interface CourseItem {
   registration_id: number;
+  activity_id?: number | null;
+  course_id?: number | null;
   live_url?: string | null;
   student: {
     id : number
@@ -77,14 +79,36 @@ export interface GetCourseResponse {
 }
 
 
-export interface RegisterPushBody  {
-  profile_id: number | null;
-  device_id: string;
+export type PushNotificationPermission =
+  | 'granted'
+  | 'denied'
+  | 'provisional'
+  | 'not_determined'
+  | 'unknown';
+
+export interface RegisterPushInstallationBody {
+  installation_id: string;
+  fcm_token: string;
   platform: 'android' | 'ios' | 'web';
-  token: string;
-  app_version?: string;
+  app_version: string;
+  notification_permission: PushNotificationPermission;
+  locale?: string;
+  timezone?: string;
   device_model?: string;
-};
+  os_version?: string;
+}
+
+export interface PushInstallationResponse {
+  ok: true;
+  installation_id: string;
+  device_row_id: number;
+  profile_id: number | null;
+  linked_profile: number | null;
+  audience: 'guest' | 'authenticated';
+  active: boolean;
+  notification_permission: PushNotificationPermission;
+  last_seen_at: string;
+}
 
 
 
@@ -120,7 +144,11 @@ export type UpdateProfileBody = Partial<{
 }>;
 
 
-export type RegisterRequestBody = { activity_id: number; online?: 0|1 };
+export type RegisterRequestBody = {
+  activity_id: number;
+  online?: 0 | 1;
+  certificate_requested?: boolean;
+};
 export type RegisterRequestResponse = {
   ok: true;
   message?: string;
@@ -129,6 +157,7 @@ export type RegisterRequestResponse = {
     user_id: number;
     activity_id: number;
     online: number;
+    certificate_requested?: boolean;
     status: number;
   };
 };
@@ -138,6 +167,7 @@ export interface RegistrationRequestItem {
   user_id: number;
   activity_id: number;
   online: 0 | 1;
+  certificate_requested?: boolean;
   status: 0 | 1 | 2;
   created_at?: string | null;
   updated_at?: string | null;

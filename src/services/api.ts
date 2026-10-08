@@ -3,7 +3,7 @@
 /** Base URLs */
 export const BASE_ROOT = 'https://admin.tanamitrain.com';
 export const MOBILE_API_URL = `${BASE_ROOT}/api/mobile-app`;
-const BASE_URL  = MOBILE_API_URL;                  // mobile-app endpoints
+const BASE_URL = MOBILE_API_URL;                  // mobile-app endpoints
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH';
 
@@ -13,12 +13,14 @@ import {
   GetCourseResponse,
   Phase,
   Profile,
-  RegisterPushBody,
+  PushInstallationResponse,
+  RegisterPushInstallationBody,
   RegisterRequestResponse,
   RegistrationRequestItem,
   UpdateProfileBody,
 } from '../types/api';
 import { OtpDeliveryMethod } from '../auth/otp';
+import {buildSeparatedPhone} from '../util/phone';
 
 /* ----------------------------- Debug helpers ----------------------------- */
 
@@ -125,17 +127,17 @@ async function request<T>(
 
 /* ----------------------- small JSON fetch utilities ---------------------- */
 
-async function debugJson(url: string, headers: Record<string,string>) {
+async function debugJson(url: string, headers: Record<string, string>) {
   console.log('➡️ GET', url);
-  const res   = await fetch(url, { method: 'GET', headers });
-  const text  = await res.text();
+  const res = await fetch(url, { method: 'GET', headers });
+  const text = await res.text();
   console.log('⬅️', res.status, res.statusText || '', '| body preview:', text.slice(0, 180));
   try { return JSON.parse(text); }
   catch { throw new Error(`HTTP ${res.status} ${res.statusText || ''} (not JSON)`); }
 }
 
 async function jsonFetch(url: string, opts: RequestInit = {}) {
-  const res  = await fetch(url, {
+  const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     ...opts,
   });
@@ -148,7 +150,7 @@ async function jsonFetchWithTimeout(url: string, opts: RequestInit = {}, timeout
   const to = setTimeout(() => controller.abort(), timeoutMs);
   try {
     console.log('[API] →', opts.method || 'GET', url);
-    const res  = await fetch(url, {
+    const res = await fetch(url, {
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       signal: controller.signal,
       ...opts,
@@ -161,6 +163,49 @@ async function jsonFetchWithTimeout(url: string, opts: RequestInit = {}, timeout
     return { ok: false, error: e?.message || 'network_error' };
   } finally {
     clearTimeout(to);
+  }
+}
+
+async function pushJson<T>(
+  path: 'register' | 'unlink',
+  body: unknown,
+  accessToken?: string | null,
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(`${BASE_ROOT}/api/fcm/${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(accessToken ? {Authorization: `Bearer ${accessToken}`} : {}),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    let json: any;
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      json = {ok: false, raw: text};
+    }
+    if (!res.ok || json?.ok === false) {
+      throw new ApiError(
+        json?.error ?? `HTTP_${res.status}`,
+        res.status,
+        json?.message ?? `push ${path} http ${res.status}`,
+      );
+    }
+    return json as T;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new ApiError('push_timeout', 0, `push ${path} timed out`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -181,14 +226,15 @@ function buildOtpBody(
 export const api = {
   // Auth
   signup: (
-    mobile: string,
+    countryCode: string,
+    mobileNumber: string,
     password: string,
     email?: string,
   ) =>
     request<{ ok: true; message: string; mobile: string }>(
       'signup',
       'POST',
-      { mobile, password, email },
+      {...buildSeparatedPhone(countryCode, mobileNumber), password, email},
     ),
 
   verify: (mobile: string, code: string) =>
@@ -248,23 +294,30 @@ export const api = {
     request<CertificatesResponse>('my-certificates', 'GET', undefined, token),
 
   async fetchCourseById(token: string | null | undefined, id: string | number) {
-    const headers: Record<string,string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
     const url = `${BASE_URL}/get-course?id=${id}`;
     return debugJson(url, headers) as Promise<GetCourseResponse>;
   },
 
   async fetchActivityFiles(token: string | null | undefined, activityId: string | number) {
-    const headers: Record<string,string> = { Accept: 'application/json' };
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
     const url = `${BASE_URL}/activity-files?id=${activityId}`;
     return debugJson(url, headers);
   },
 
-  async fetchCertificateByStudentActivity(token: string | null | undefined, activityId: string | number, studentId: string | number) {
-    const headers: Record<string,string> = { Accept: 'application/json' };
+  async fetchCertificateByStudentActivity(
+    token: string | null | undefined,
+    activityId: string | number | null | undefined,
+    studentId: string | number,
+    courseId?: string | number | null,
+  ) {
+    const headers: Record<string, string> = { Accept: 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
-    const url = `${BASE_URL}/certi-by-student-activity?activity_id=${activityId}&student_id=${studentId}`;
+    const courseQuery = courseId == null ? '' : `&course_id=${encodeURIComponent(String(courseId))}`;
+    const activityQuery = activityId == null ? '' : encodeURIComponent(String(activityId));
+    const url = `${BASE_URL}/certi-by-student-activity?student_id=${encodeURIComponent(String(studentId))}&activity_id=${activityQuery}${courseQuery}`;
     return debugJson(url, headers);
   },
 
@@ -288,17 +341,23 @@ export const api = {
       buildOtpBody(mobile, 'resend', deliveryMethod),
     ),
 
-  // FCM / Inbox (legacy server paths live under BASE_ROOT)
-  async registerPushToken(body: RegisterPushBody) {
-    const res = await fetch(`${BASE_ROOT}/api/fcm/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text();
-    let json: any; try { json = JSON.parse(text); } catch { json = { ok: false, raw: text }; }
-    if (!res.ok || json?.ok === false) throw new Error(`registerPushToken http ${res.status}`);
-    return json;
+  // FCM / Inbox (server paths live under BASE_ROOT)
+  async registerPushInstallation(
+    body: RegisterPushInstallationBody,
+    accessToken?: string | null,
+  ): Promise<PushInstallationResponse> {
+    return pushJson<PushInstallationResponse>('register', body, accessToken);
+  },
+
+  async unlinkPushInstallation(
+    installationId: string,
+    accessToken: string,
+  ): Promise<PushInstallationResponse> {
+    return pushJson<PushInstallationResponse>(
+      'unlink',
+      {installation_id: installationId},
+      accessToken,
+    );
   },
 
   async inboxAck(body: {
@@ -328,11 +387,51 @@ export const api = {
   },
 
   // Registrations
-  registerForActivity: (token: string, activity_id: number, online: 0|1 = 0) =>
-    request<RegisterRequestResponse>('register-request', 'POST', { activity_id, online }, token),
+  getActivity: (activityId: number, token?: string) =>
+    request<Record<string, any>>(
+      `get-activity?activity_id=${encodeURIComponent(String(activityId))}`,
+      'GET',
+      undefined,
+      token,
+    ),
+
+  registerForActivity: (
+    token: string,
+    activity_id: number,
+    online: 0 | 1 = 0,
+    certificate_requested?: boolean,
+  ) =>
+    request<RegisterRequestResponse>(
+      'register-request',
+      'POST',
+      {
+        activity_id,
+        online,
+        ...(certificate_requested === undefined ? {} : { certificate_requested }),
+      },
+      token,
+    ),
 
   myRegistrations: (token: string) =>
     request<{ ok: true; items: RegistrationRequestItem[] }>('my-registrations', 'GET', undefined, token),
+
+  // App Update
+  checkForUpdate: async (): Promise<{
+    current_version: string;
+    url?: string;
+    download_url?: string;
+    store_url?: string;
+    play_store_url?: string;
+  }> => {
+    const res = await fetch(`${MOBILE_API_URL}/check-for-update`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      throw new Error(`checkForUpdate http ${res.status}`);
+    }
+    return res.json();
+  },
 
   refreshAccountData: (token: string) =>
     Promise.all([

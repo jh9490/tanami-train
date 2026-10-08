@@ -48,6 +48,41 @@ describe('mobile synchronization API', () => {
     );
   });
 
+  it('includes the course ID when loading a certificate for a course item', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { ok: true, certificate: null }));
+
+    await api.fetchCertificateByStudentActivity('token-123', 30, 7, 20);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${MOBILE_API_URL}/certi-by-student-activity?student_id=7&activity_id=30&course_id=20`,
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer token-123' }),
+      }),
+    );
+  });
+
+  it('keeps certificate loading backward compatible when course ID is absent', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { ok: true, certificate: null }));
+
+    await api.fetchCertificateByStudentActivity('token-123', 30, 7);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${MOBILE_API_URL}/certi-by-student-activity?student_id=7&activity_id=30`,
+      expect.any(Object),
+    );
+  });
+
+  it('requests a course-level certificate when activity ID is null', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { ok: true, certificate: null }));
+
+    await api.fetchCertificateByStudentActivity('token-123', null, 7, 20);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${MOBILE_API_URL}/certi-by-student-activity?student_id=7&activity_id=&course_id=20`,
+      expect.any(Object),
+    );
+  });
+
   it('preserves registration validation status and error code', async () => {
     fetchMock.mockResolvedValue(
       jsonResponse(422, { ok: false, error: 'online_registration_unavailable' }),
@@ -59,6 +94,58 @@ describe('mobile synchronization API', () => {
       code: 'online_registration_unavailable',
       status: 422,
     });
+  });
+
+  it('refreshes activity registration state with the activity ID', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, { activity: { id: 30, registration_open: true } }),
+    );
+
+    await api.getActivity(30, 'token-123');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${MOBILE_API_URL}/get-activity?activity_id=30`,
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ Authorization: 'Bearer token-123' }),
+      }),
+    );
+  });
+
+  it('sends an initiative certificate preference with registration', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        ok: true,
+        request: { id: 1, activity_id: 1462, certificate_requested: true },
+      }),
+    );
+
+    await api.registerForActivity('token-123', 1462, 0, true);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${MOBILE_API_URL}/register-request`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          activity_id: 1462,
+          online: 0,
+          certificate_requested: true,
+        }),
+      }),
+    );
+  });
+
+  it('keeps the legacy course registration payload unchanged', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { ok: true }));
+
+    await api.registerForActivity('token-123', 30, 0);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${MOBILE_API_URL}/register-request`,
+      expect.objectContaining({
+        body: JSON.stringify({ activity_id: 30, online: 0 }),
+      }),
+    );
   });
 
   it('refreshes all account resources in parallel with the bearer token', async () => {

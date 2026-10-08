@@ -8,7 +8,6 @@ import React, {
   useState,
 } from 'react';
 import {Alert, AppState} from 'react-native';
-import messaging from '@react-native-firebase/messaging';
 
 import {mapAuthError} from '../auth/otp';
 import {api} from '../services/api';
@@ -39,7 +38,10 @@ import type {
   Profile,
   RegistrationRequestItem,
 } from '../types/api';
-import {getOrCreateDeviceId} from '../util/deviceId';
+import {
+  reconcilePushInstallation,
+  unlinkPushInstallation,
+} from '../services/pushInstallation';
 
 type User = {
   id: number;
@@ -67,7 +69,12 @@ type AuthContextType = {
   historyLinkRequest: OnboardingBootstrap['history_link_request'];
   loading: boolean;
   isAuthenticated: boolean;
-  signUp: (mobile: string, password: string, email?: string) => Promise<void>;
+  signUp: (
+    countryCode: string,
+    mobileNumber: string,
+    password: string,
+    email?: string,
+  ) => Promise<void>;
   verifyOtp: (mobile: string, code: string) => Promise<void>;
   signIn: (mobile: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -176,23 +183,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     ]);
   }, [updateToken]);
 
-  const registerFcmForProfile = useCallback(async (profileId: number | null) => {
-    try {
-      await messaging().registerDeviceForRemoteMessages();
-      const fcm = await messaging().getToken();
-      const deviceId = await getOrCreateDeviceId();
-      await api.registerPushToken({
-        profile_id: profileId,
-        device_id: deviceId,
-        platform: 'android',
-        token: fcm,
-        app_version: '1.0.1',
-      });
-    } catch (error) {
-      console.log('FCM registration failed:', error);
-    }
-  }, []);
-
   const applyBootstrap = useCallback(
     async (snapshot: OnboardingBootstrap) => {
       setBootstrap(snapshot);
@@ -280,17 +270,21 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
       ]);
 
       try {
-        const snapshot = await refreshBootstrapForToken(accessToken);
-        await registerFcmForProfile(snapshot?.profile?.id ?? null);
+        await refreshBootstrapForToken(accessToken);
       } catch (error) {
         // The credential is already installed. Preserve the authenticated
         // session across retryable Bootstrap failures, but propagate a 401
         // after the centralized clearing path has invalidated it.
         if (isUnauthorized(error)) throw error;
-        await registerFcmForProfile(null);
       }
+
+      // Authentication, not a caller-supplied profile ID, is authoritative.
+      // Never fall back to a guest registration when Bootstrap is unavailable.
+      await reconcilePushInstallation(accessToken).catch(error => {
+        console.log('Authenticated push reconciliation failed:', error);
+      });
     },
-    [refreshBootstrapForToken, registerFcmForProfile, updateToken],
+    [refreshBootstrapForToken, updateToken],
   );
 
   const installAccessToken = useCallback(
@@ -304,8 +298,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     let cancelled = false;
 
     (async () => {
+      let storedToken: string | null = null;
       try {
-        const storedToken = await getAccessToken();
+        storedToken = await getAccessToken();
         if (cancelled) return;
 
         if (!storedToken) {
@@ -322,15 +317,17 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
         await consumeBootstrapRefreshPending();
         if (cancelled) return;
 
-        const snapshot = await refreshBootstrapForToken(storedToken);
-        if (!cancelled) {
-          await registerFcmForProfile(snapshot?.profile?.id ?? null);
-        }
+        await refreshBootstrapForToken(storedToken);
       } catch (error) {
         if (isUnauthorized(error) && tokenRef.current) {
           await clearSession(true);
         }
       } finally {
+        if (!cancelled && tokenRef.current === storedToken) {
+          await reconcilePushInstallation(storedToken).catch(error => {
+            console.log('Restored push reconciliation failed:', error);
+          });
+        }
         if (!cancelled) setLoading(false);
       }
     })();
@@ -343,7 +340,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
     applyBootstrap,
     clearSession,
     refreshBootstrapForToken,
-    registerFcmForProfile,
     updateToken,
   ]);
 
@@ -361,12 +357,13 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   }, [refreshBootstrapForToken]);
 
   const signUp = async (
-    mobile: string,
+    countryCode: string,
+    mobileNumber: string,
     password: string,
     email?: string,
   ) => {
     try {
-      await api.signup(mobile, password, email);
+      await api.signup(countryCode, mobileNumber, password, email);
       Alert.alert('تم', 'تم إنشاء الحساب بنجاح. أكمل التحقق لاستلام الرمز.');
     } catch (error: any) {
       Alert.alert('خطأ', mapAuthError(error.message));
@@ -401,13 +398,23 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   };
 
   const signOut = useCallback(async () => {
+    const currentToken = tokenRef.current;
     try {
-      const currentToken = tokenRef.current;
-      if (currentToken) await api.logout(currentToken);
+      if (currentToken) {
+        try {
+          await unlinkPushInstallation(currentToken);
+        } catch (error) {
+          console.log('Push unlink deferred:', error);
+        }
+        await api.logout(currentToken);
+      }
     } catch {
       // Server logout is best-effort; local credentials are always cleared.
     } finally {
       await clearSession();
+      await reconcilePushInstallation(null).catch(error => {
+        console.log('Guest push reconciliation failed:', error);
+      });
     }
   }, [clearSession]);
 
@@ -446,30 +453,16 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({
   const refreshBootstrap = useCallback(async () => {
     const currentToken = tokenRef.current;
     if (!currentToken) return null;
-    return refreshBootstrapForToken(currentToken);
+    const snapshot = await refreshBootstrapForToken(currentToken);
+    await reconcilePushInstallation(currentToken).catch(error => {
+      console.log('Profile push reconciliation failed:', error);
+    });
+    return snapshot;
   }, [refreshBootstrapForToken]);
 
   const refreshAccountData = useCallback(async () => {
     await refreshBootstrap();
   }, [refreshBootstrap]);
-
-  useEffect(() => {
-    const unsubscribe = messaging().onTokenRefresh(async newToken => {
-      try {
-        const deviceId = await getOrCreateDeviceId();
-        await api.registerPushToken({
-          profile_id: bootstrap?.profile?.id ?? null,
-          device_id: deviceId,
-          platform: 'android',
-          token: newToken,
-          app_version: '1.0.1',
-        });
-      } catch (error) {
-        console.log('FCM token refresh registration failed:', error);
-      }
-    });
-    return () => unsubscribe();
-  }, [bootstrap?.profile?.id]);
 
   const hasLinkedHistory = bootstrap?.link_status === 'linked';
   const courses = hasLinkedHistory ? bootstrap.courses : EMPTY_COURSES;

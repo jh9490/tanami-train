@@ -60,6 +60,12 @@ jest.mock('../src/services/notifications', () => ({
   initNotifications: jest.fn(() => Promise.resolve(() => {})),
 }));
 
+jest.mock('../src/services/pushInstallation', () => ({
+  startPushInstallationService: jest.fn(() => Promise.resolve(() => {})),
+  reconcilePushInstallation: jest.fn(() => Promise.resolve()),
+  unlinkPushInstallation: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock('@react-native-firebase/messaging', () => {
   const messaging = () => ({
     subscribeToTopic: jest.fn(() => Promise.resolve()),

@@ -1,6 +1,6 @@
 // src/screens/MenuScreen.tsx
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, I18nManager, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,6 +12,7 @@ import ThemedBackground from '../components/ThemedBackground';
 import { colors } from '../../theme/colors';
 import { openLinkSafe } from '../../util/Linker';
 import { TANAMI_TRAIN_LOCATION } from '../../constants/location';
+import { checkAndPromptForUpdate } from '../../util/appUpdate';
 
 type Nav = CompositeNavigationProp<
   NativeStackNavigationProp<MenuStackParamList>,
@@ -23,18 +24,24 @@ const Row = ({
   icon,
   onPress,
   danger = false,
+  loading = false,
 }: {
   title: string;
   icon: string;
   onPress: () => void;
   danger?: boolean;
+  loading?: boolean;
 }) => (
-  <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.75}>
-    <Icon
-      name={I18nManager.isRTL ? 'chevron-left' : 'chevron-right'}
-      size={22}
-      color={danger ? '#d9534f' : 'rgba(255, 248, 239, 0.58)'}
-    />
+  <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.75} disabled={loading}>
+    {loading ? (
+      <ActivityIndicator size="small" color={colors.gold} />
+    ) : (
+      <Icon
+        name={I18nManager.isRTL ? 'chevron-left' : 'chevron-right'}
+        size={22}
+        color={danger ? '#d9534f' : 'rgba(255, 248, 239, 0.58)'}
+      />
+    )}
     <View style={styles.rowMain}>
       <Text style={[styles.rowText, danger && styles.rowTextDanger]}>{title}</Text>
       <Icon
@@ -51,6 +58,19 @@ export default function MenuScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const { signOut, isAuthenticated, displayName } = useAuth();
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  const handleCheckForUpdates = async () => {
+    if (isCheckingUpdate) return;
+    setIsCheckingUpdate(true);
+    try {
+      await checkAndPromptForUpdate();
+    } catch {
+      Alert.alert('تعذر التحقق من التحديثات', 'يرجى التأكد من اتصالك بالإنترنت والمحاولة مرة أخرى.');
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert('تأكيد', 'هل تريد تسجيل الخروج؟', [
@@ -87,7 +107,7 @@ export default function MenuScreen() {
               {isAuthenticated ? 'أهلًا بك' : 'مرحبًا'}
             </Text>
             <Text style={styles.headerSub}>
-              {isAuthenticated ? displayName: 'سجّل الدخول للوصول لكل الميزات'}
+              {isAuthenticated ? displayName : 'سجّل الدخول للوصول لكل الميزات'}
             </Text>
           </View>
           <Icon
@@ -124,7 +144,7 @@ export default function MenuScreen() {
             onPress={() => navigation.navigate('ContactUs')}
           />
 
-         <Row title="موقعنا" icon="place" onPress={openMap} />
+          <Row title="موقعنا" icon="place" onPress={openMap} />
 
           {/* Divider */}
           <View style={styles.divider} />
@@ -147,16 +167,31 @@ export default function MenuScreen() {
 
           {/* Divider */}
           <View style={styles.divider} />
- 
 
           {isAuthenticated ? (
-            <Row title="تسجيل الخروج" icon="logout" onPress={handleLogout} danger />
+            <>
+              <Row
+                title="التحقق من وجود تحديثات"
+                icon="system-update"
+                onPress={handleCheckForUpdates}
+                loading={isCheckingUpdate}
+              />
+              <Row title="تسجيل الخروج" icon="logout" onPress={handleLogout} danger />
+            </>
           ) : (
-            <Row
-              title="تسجيل الدخول"
-              icon="login"
-              onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
-            />
+            <>
+              <Row
+                title="تسجيل الدخول"
+                icon="login"
+                onPress={() => navigation.navigate('AuthStack', { screen: 'SignIn' })}
+              />
+              <Row
+                title="التحقق من وجود تحديثات"
+                icon="system-update"
+                onPress={handleCheckForUpdates}
+                loading={isCheckingUpdate}
+              />
+            </>
           )}
         </View>
       </ScrollView>

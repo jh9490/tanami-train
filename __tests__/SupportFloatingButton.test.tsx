@@ -26,6 +26,7 @@ describe('SupportFloatingButton', () => {
     });
 
     expect(renderer.root.findByProps({ name: 'life-ring' })).toBeTruthy();
+    expect(TANAMI_WHATSAPP_URL).toBe('https://wa.me/963992293006');
     expect(openLinkSafe).toHaveBeenCalledWith(TANAMI_WHATSAPP_URL);
   });
 });

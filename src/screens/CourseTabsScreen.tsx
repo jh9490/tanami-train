@@ -442,7 +442,6 @@ export default function CourseTabsScreen({ route }: any) {
     (async () => {
       try {
         if (!courseId) throw new Error('لا يوجد معرّف للدورة.');
-        if (!activityId) throw new Error('لا يوجد معرّف للنشاط (activityId).');
 
         setLoading(true);
         setErr(null);
@@ -453,25 +452,44 @@ export default function CourseTabsScreen({ route }: any) {
         setCourse(normalizeCourse(courseJson, titleFromNav));
 
         // 2) Media (non-blocking if it fails)
-        try {
-          const filesJson = await api.fetchActivityFiles(token ?? undefined, String(activityId));
-          const { images, docs } = splitActivityFiles(filesJson.files || []);
-          setMedia({ images, docs });
-        } catch {
+        if (activityId != null) {
+          try {
+            const filesJson = await api.fetchActivityFiles(token ?? undefined, String(activityId));
+            const { images, docs } = splitActivityFiles(filesJson.files || []);
+            setMedia({ images, docs });
+          } catch {
+            setMedia({ images: [], docs: [] });
+          }
+        } else {
           setMedia({ images: [], docs: [] });
         }
 
         // 3) Certificate (new v2 fields with AR/EN names)
-        if (studentId) {
+        if (studentId != null) {
           try {
+            console.log('[Certificate API] request params:', {
+              student_id: studentId,
+              activity_id: activityId,
+              course_id: courseId ?? null,
+            });
             // Make sure your api method calls the updated endpoint that returns name_ar/name_en & course_name_ar/course_name_en
-            const certJson: CertApiV2 = await api.fetchCertificateByStudentActivity(token ?? undefined, String(activityId), String(studentId));
+            const certJson: CertApiV2 = await api.fetchCertificateByStudentActivity(
+              token ?? undefined,
+              activityId == null ? null : String(activityId),
+              String(studentId),
+              courseId == null ? undefined : String(courseId),
+            );
             const normalized = normalizeCertForPreviews(certJson?.certificate);
             setCertPack(normalized);
           } catch {
             setCertPack(undefined);
           }
         } else {
+          console.warn('[Certificate API] request skipped because student ID is missing:', {
+            student_id: studentId ?? null,
+            activity_id: activityId ?? null,
+            course_id: courseId ?? null,
+          });
           setCertPack(undefined);
         }
       } catch (e: any) {

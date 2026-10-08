@@ -101,7 +101,13 @@ export type AccountStackParamList = {
 export type UserStackParamList = {
   MyNotifications: undefined;
   MyCourses: undefined;
-  CourseTabs: { courseId: string; title: string } | undefined;
+  CourseTabs: {
+    courseId: string | number;
+    title?: string;
+    activityId?: string | number | null;
+    studentId?: string | number | null;
+    liveUrl?: string;
+  } | undefined;
   MyRegistrationRequests: undefined;
   MyCertificates: undefined;
   OnlineCourses: undefined;

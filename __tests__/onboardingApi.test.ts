@@ -46,7 +46,26 @@ describe('onboarding API', () => {
         'Content-Type': 'application/json',
         'Idempotency-Key': 'gesture-key',
       },
-      body: JSON.stringify({ country_code: '963', mobile: '0912345678' }),
+      body: JSON.stringify({ country_code: '963', mobile_number: '912345678' }),
+    });
+  });
+
+  it('never includes the country code inside mobile_number', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, {
+      ok: true,
+      session_token: 'session-secret',
+      expires_in: 300,
+      resend_after: 20,
+    }));
+
+    await onboardingApi.start(
+      {country_code: '+971', mobile: '+9710501234567'},
+      'gesture-key',
+    );
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      country_code: '971',
+      mobile_number: '501234567',
     });
   });
 

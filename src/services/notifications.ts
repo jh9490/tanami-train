@@ -9,7 +9,6 @@ import { getOrCreateDeviceId } from '../util/deviceId';
 import { getStoredProfileId } from '../storage/authStorage';
 
 type InitOpts = {
-  onToken?: (token: string) => void | Promise<void>;
   onMessage?: (data: Record<string, string>) => void | Promise<void>;
   onOpen?: (data: Record<string, string>) => void | Promise<void>;
 };
@@ -25,18 +24,6 @@ function stringifyNotificationData(
       typeof value === 'string' ? value : JSON.stringify(value),
     ])
   );
-}
-
-/** Ask notification permission (Android 13+ + iOS; no-op on older Android) */
-export async function requestPushPermission() {
-  try { return await notifee.requestPermission(); }
-  catch (e) { console.log('requestPushPermission error:', e); return null; }
-}
-
-/** Get current FCM token (null on failure) */
-export async function getFcmToken(): Promise<string | null> {
-  try { return (await messaging().getToken()) ?? null; }
-  catch (e) { console.log('getFcmToken error:', e); return null; }
 }
 
 /** Ensure a default Android channel exists (required on Android 8+) */
@@ -157,34 +144,11 @@ function attachOpenHandlers(onOpen?: InitOpts['onOpen']) {
 
 /** Init notifications */
 export async function initNotifications(opts: InitOpts = {}) {
-  await requestPushPermission();
-
-  const token = await getFcmToken();
-  console.log('Notifications Services token:', token);
-  if (token && opts.onToken) {
-    try {
-      await opts.onToken(token);
-    } catch (e) {
-      console.log('onToken failed:', e);
-    }
-  }
-
   const unsubMsg = listenForegroundMessages(opts.onMessage);
   const unsubOpen = attachOpenHandlers(opts.onOpen);
-
-  const unsubRefresh = messaging().onTokenRefresh(async (newToken) => {
-    if (opts.onToken) {
-      try {
-        await opts.onToken(newToken);
-      } catch (e) {
-        console.log('onToken refresh failed:', e);
-      }
-    }
-  });
 
   return () => {
     unsubMsg();
     unsubOpen();
-    unsubRefresh();
   };
 }
