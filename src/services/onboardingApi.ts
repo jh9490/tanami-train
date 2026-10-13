@@ -122,11 +122,22 @@ function normalizeBootstrap(snapshot: OnboardingBootstrap): OnboardingBootstrap 
 }
 
 export const onboardingApi = {
-  start: (body: OnboardingStartRequest, idempotencyKey: string) =>
-    onboardingRequest<OnboardingSessionResponse>('start', 'POST', {
-      body: buildSeparatedPhone(body.country_code, body.mobile),
+  start: (body: OnboardingStartRequest, idempotencyKey: string) => {
+    const requestBody = buildSeparatedPhone(body.country_code, body.mobile);
+
+    if (__DEV__) {
+      console.log('[Onboarding Start Request]', {
+        url: `${ONBOARDING_API_URL}/start`,
+        method: 'POST',
+        body: requestBody,
+      });
+    }
+
+    return onboardingRequest<OnboardingSessionResponse>('start', 'POST', {
+      body: requestBody,
       idempotencyKey,
-    }),
+    });
+  },
 
   resend: (body: OnboardingResendRequest) =>
     onboardingRequest<OnboardingSessionResponse>('resend', 'POST', { body }),

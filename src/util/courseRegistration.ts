@@ -11,9 +11,11 @@ export const canRequestOnlineRegistration = (live: unknown): boolean =>
 
 const REGISTRATION_ERROR_MESSAGES: Record<string, string> = {
   activity_not_found: 'لم يعد هذا النشاط متاحًا.',
-  activity_not_open_for_registration: 'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.',
+  activity_not_open_for_registration: 'التسجيل غير متاح بعد بدء النشاط',
   online_registration_unavailable: 'التسجيل أونلاين غير متاح لهذا النشاط. اختر الحضور المباشر.',
+  certificate_request_not_available: 'طلب الشهادة متاح للمبادرات فقط.',
   activity_id_required: 'تعذر إرسال الطلب بسبب خطأ في بيانات النشاط.',
+  save_failed: 'تعذر حفظ طلب التسجيل. يرجى المحاولة مرة أخرى.',
   unauthorized: 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.',
 };
 

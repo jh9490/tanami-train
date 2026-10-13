@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   ImageBackground,
   Modal,
   PanResponder,
@@ -58,7 +57,7 @@ type BaseProps = {
   onCourseChange?: (course: CourseLite) => void;
 };
 
-type Tabs = 'head' | 'details' | 'poster' | 'register';
+type Tabs = 'head' | 'details' | 'register';
 
 type Props = BaseProps & {
   /** Control which tabs to show. Defaults to all (incl. register if authenticated). */
@@ -117,7 +116,6 @@ export default function CourseDialog({
   const defaultTabs: Tabs[] = [
     'head',
     'details',
-    'poster',
     ...(showRegistrationTab ? (['register'] as const) : []),
   ];
   const tabs: Tabs[] = (enabledTabs?.length ? enabledTabs : defaultTabs).filter(
@@ -212,7 +210,7 @@ export default function CourseDialog({
         onClose();
         Alert.alert(
           'التسجيل غير متاح',
-          'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.',
+          'التسجيل غير متاح بعد بدء النشاط',
         );
         return;
       }
@@ -277,7 +275,6 @@ export default function CourseDialog({
   const tabEntries = [
     { k: 'head' as const, t: 'العناوين' },
     { k: 'details' as const, t: 'التفاصيل' },
-    { k: 'poster' as const, t: 'الملصق' },
     ...(showRegistrationTab ? [{ k: 'register' as const, t: 'التسجيل' }] : []),
   ].filter((t) => tabs.includes(t.k));
 
@@ -397,41 +394,51 @@ export default function CourseDialog({
 
             {/* tabs */}
             {tabEntries.length > 1 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 4 }}
-                style={{ marginTop: 10, marginBottom: 6 }}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#eee',
+                  borderRadius: 999,
+                  padding: 4,
+                  marginTop: 10,
+                  marginBottom: 6,
+                  marginHorizontal: 22,
+                }}
               >
-                <View style={{ flexDirection: 'row', backgroundColor: '#eee', borderRadius: 999, padding: 4 }}>
-                  {tabEntries.map(({ k, t }) => {
-                    const active = tab === k;
-                    return (
-                      <TouchableOpacity
-                        key={k}
-                        onPress={() => setTab(k)}
+                {tabEntries.map(({ k, t }) => {
+                  const active = tab === k;
+                  return (
+                    <TouchableOpacity
+                      key={k}
+                      onPress={() => setTab(k)}
+                      style={{
+                        flex: 1,
+                        minHeight: 38,
+                        borderRadius: 999,
+                        backgroundColor: active ? '#0f4f30' : 'transparent',
+                        marginHorizontal: 2,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        numberOfLines={1}
                         style={{
-                          paddingVertical: 8,
-                          paddingHorizontal: 14,
-                          borderRadius: 999,
-                          backgroundColor: active ? '#0f4f30' : 'transparent',
-                          marginHorizontal: 2,
+                          color: active ? '#eceadf' : '#333',
+                          fontFamily: 'NotoKufiArabic-Bold',
+                          fontSize: 12,
+                          lineHeight: 22,
+                          textAlign: 'center',
+                          includeFontPadding: false,
                         }}
                       >
-                        <Text
-                          style={{
-                            color: active ? '#eceadf' : '#333',
-                            fontFamily: 'NotoKufiArabic-Bold',
-                            fontSize: 12,
-                          }}
-                        >
-                          {t}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </ScrollView>
+                        {t}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
 
             {/* content */}
@@ -497,54 +504,6 @@ export default function CourseDialog({
                           </>
                         )}
                       </>
-                    )}
-                  </View>
-                )}
-
-                {/* poster */}
-                {tab === 'poster' && tabs.includes('poster') && (
-                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    {c.image ? (
-                      <View style={{ width: '100%', height: 260, position: 'relative' }}>
-                        <Image
-                          source={{ uri: c.image }}
-                          style={{ width: '100%', height: '100%', borderRadius: 8 }}
-                          resizeMode="contain"
-                        />
-                        {isInitiative ? (
-                          <View
-                            pointerEvents="none"
-                            style={{
-                              position: 'absolute',
-                              top: 12,
-                              right: 0,
-                              minWidth: 76,
-                              paddingVertical: 7,
-                              paddingHorizontal: 13,
-                              borderTopLeftRadius: 12,
-                              borderBottomLeftRadius: 12,
-                              backgroundColor: '#cbae82',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: '#0c2a20',
-                                fontFamily: 'NotoKufiArabic-Bold',
-                                fontSize: 11,
-                              }}
-                            >
-                              مبادرة
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    ) : (
-                      <Text
-                        style={{ color: '#0f4f30', fontFamily: 'NotoKufiArabic-Regular', fontSize: 12, textAlign: 'center' }}
-                      >
-                        لا يوجد ملصق
-                      </Text>
                     )}
                   </View>
                 )}
@@ -733,7 +692,7 @@ export default function CourseDialog({
                             marginBottom: 10,
                           }}
                         >
-                          {'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.'}
+                          {'التسجيل غير متاح بعد بدء النشاط'}
                         </Text>
                       )}
                       <TouchableOpacity

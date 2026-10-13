@@ -29,7 +29,7 @@ export const getPricingLabels = (locale: PricingLocale = 'ar') =>
         activityType: 'نوع النشاط',
         activityFee: 'رسوم التسجيل',
         certificateFee: 'رسوم الشهادة',
-        separatePayment: 'يمكنك حضور المبادرة مجاناً، ويتم دفع رسوم الشهادة لاحقاً عند طلبها.',
+        separatePayment: 'يمكنك حضور المبادرة مجانا ، ويتم دفع رسوم الشهادة في اول يوم',
         paidAttendance:
           'رسوم الشهادة منفصلة واختيارية، وليست ضمن مبلغ التسجيل أو شرطاً لحضور المبادرة.',
       }

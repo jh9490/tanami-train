@@ -119,6 +119,13 @@ export default function MenuScreen() {
         </View>
 
         <View style={styles.card}>
+          {isAuthenticated && (
+            <Row
+              title="طلبات التسجيل"
+              icon="how-to-reg"
+              onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+            />
+          )}
           <Row
             title="التحقق من الشهادات"
             icon="verified"
@@ -127,9 +134,9 @@ export default function MenuScreen() {
           {isAuthenticated && (
             <>
               <Row
-                title="طلبات التسجيل"
-                icon="how-to-reg"
-                onPress={() => navigation.navigate('UserStack', { screen: 'MyRegistrationRequests' })}
+                title="صـوري"
+                icon="photo-library"
+                onPress={() => navigation.navigate('MyPhotos')}
               />
               <Row
                 title="شهاداتي"
@@ -156,11 +163,6 @@ export default function MenuScreen() {
                 title="الإعدادات"
                 icon="settings"
                 onPress={() => navigation.navigate('Settings')}
-              />
-              <Row
-                title="صـوري"
-                icon="photo-library"
-                onPress={() => navigation.navigate('MyPhotos')}
               />
             </>
           )}

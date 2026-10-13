@@ -271,7 +271,7 @@ function UserStack() {
       <UserStackNav.Screen
         name="MyRegistrationRequests"
         component={MyRegistrationRequests}
-        options={{ title: 'طلباتي' }}
+        options={{ title: 'طلبات التسجيل' }}
       />
       <UserStackNav.Screen
         name="MyCertificates"

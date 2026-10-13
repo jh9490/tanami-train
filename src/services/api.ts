@@ -389,7 +389,7 @@ export const api = {
   // Registrations
   getActivity: (activityId: number, token?: string) =>
     request<Record<string, any>>(
-      `get-activity?activity_id=${encodeURIComponent(String(activityId))}`,
+      `get-activity?id=${encodeURIComponent(String(activityId))}`,
       'GET',
       undefined,
       token,
@@ -407,7 +407,9 @@ export const api = {
       {
         activity_id,
         online,
-        ...(certificate_requested === undefined ? {} : { certificate_requested }),
+        ...(certificate_requested === undefined
+          ? {}
+          : { certificate_requested: certificate_requested ? 1 : 0 }),
       },
       token,
     ),

@@ -36,6 +36,8 @@ describe('course registration eligibility', () => {
     ['activity_not_open_for_registration', 'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.'],
     ['online_registration_unavailable', 'التسجيل أونلاين غير متاح لهذا النشاط. اختر الحضور المباشر.'],
     ['activity_id_required', 'تعذر إرسال الطلب بسبب خطأ في بيانات النشاط.'],
+    ['certificate_request_not_available', 'طلب الشهادة متاح للمبادرات فقط.'],
+    ['save_failed', 'تعذر حفظ طلب التسجيل. يرجى المحاولة مرة أخرى.'],
     ['unauthorized', 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.'],
   ])('maps %s to an Arabic validation message', (code, expected) => {
     expect(registrationErrorMessage(new Error(code))).toBe(expected);

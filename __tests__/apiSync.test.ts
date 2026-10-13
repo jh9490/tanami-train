@@ -104,7 +104,7 @@ describe('mobile synchronization API', () => {
     await api.getActivity(30, 'token-123');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      `${MOBILE_API_URL}/get-activity?activity_id=30`,
+      `${MOBILE_API_URL}/get-activity?id=30`,
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({ Authorization: 'Bearer token-123' }),
@@ -129,7 +129,7 @@ describe('mobile synchronization API', () => {
         body: JSON.stringify({
           activity_id: 1462,
           online: 0,
-          certificate_requested: true,
+          certificate_requested: 1,
         }),
       }),
     );
