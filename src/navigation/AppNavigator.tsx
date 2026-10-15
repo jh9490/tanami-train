@@ -51,7 +51,17 @@ import SupportFloatingButton from '../screens/components/SupportFloatingButton';
 export type RootStackParamList = {
   Splash: undefined;
   MainTabs: undefined;
-  SubCourses: { title?: string } | undefined;
+  SubCourses: {
+    title?: string;
+    packageImageUrl?: string | null;
+    subCourses?: Array<{
+      id: number;
+      name: string;
+      course_head_lines?: string | null;
+      days?: number | null;
+      hours?: number | null;
+    }>;
+  } | undefined;
   CVGenerator: undefined;
 
   AuthStack: { screen?: keyof AuthStackParamList } | undefined;
@@ -360,7 +370,7 @@ function Root() {
         options={{
           headerShown: true,
           ...headerCommon,
-          title: 'الدورات',
+          title: '',
         }}
       />
 

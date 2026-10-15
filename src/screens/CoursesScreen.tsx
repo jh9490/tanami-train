@@ -1,47 +1,109 @@
 // CoursesScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components/native';
-import { Alert, Dimensions, FlatList, I18nManager, RefreshControl } from 'react-native';
+import { Alert, Dimensions, FlatList, I18nManager, RefreshControl, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useNavigation } from '@react-navigation/native';
 import AppLoading from './components/AppLoading';
-import ThemedBackground from './components/ThemedBackground';
 import { colors } from '../theme/colors';
 
 I18nManager.forceRTL(true);
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width / 2 - 24;
+const CARD_WIDTH = (width - 44) / 2;
 
-const Container = styled(ThemedBackground)`
+const Container = styled.View`
   flex: 1;
-  padding: 16px;
+  background-color: ${colors.cream};
+`;
+
+const PageHeader = styled.View`
+  align-items: center;
+  padding: 26px 20px 24px;
+`;
+
+const PageTitle = styled.Text`
+  color: ${colors.greenDark};
+  font-size: 21px;
+  line-height: 34px;
+  text-align: center;
+  font-family: 'NotoKufiArabic-Bold';
+`;
+
+const TitleAccent = styled.View`
+  width: 42px;
+  height: 4px;
+  border-radius: 2px;
+  margin-top: 12px;
+  background-color: ${colors.gold};
 `;
 
 const Card = styled.TouchableOpacity`
-  background-color: rgba(255, 248, 239, 0.12);
+  background-color: ${colors.white};
   width: ${CARD_WIDTH}px;
-  height: 120px;
-  border-radius: 12px;
+  min-height: 172px;
+  border-radius: 16px;
   border-width: 1px;
-  border-color: rgba(255, 248, 239, 0.16);
-  margin: 8px;
+  border-color: ${colors.cardBorder};
+  margin-bottom: 12px;
+  padding: 18px 10px 14px;
   justify-content: center;
   align-items: center;
+  shadow-color: #143626;
+  shadow-offset: 0px 3px;
+  shadow-opacity: 0.07;
+  shadow-radius: 7px;
+  elevation: 2;
+`;
+
+const ArtworkTile = styled.View`
+  width: 82px;
+  height: 82px;
+  border-radius: 16px;
+  border-width: 1px;
+  border-color: #e4e9e4;
+  background-color: ${colors.white};
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 13px;
 `;
 
 const CardIcon = styled(Icon)`
-  color: ${colors.gold};
-  font-size: 28px;
-  margin-bottom: 8px;
+  color: ${colors.green};
+  font-size: 36px;
+`;
+
+const CardImage = styled.Image`
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
 `;
 
 const CardLabel = styled.Text`
-  color: rgba(255, 248, 239, 0.88);
+  color: ${colors.text};
+  font-size: 13px;
+  line-height: 22px;
+  text-align: center;
+  font-family: 'NotoKufiArabic-Bold';
+`;
+
+const EmptyText = styled.Text`
+  color: ${colors.muted};
   font-size: 14px;
   text-align: center;
+  margin-top: 24px;
   font-family: 'NotoKufiArabic-Regular';
 `;
+
+const styles = StyleSheet.create({
+  columns: {
+    justifyContent: 'space-between',
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+});
 
 /* ------------------- API types ------------------- */
 type ApiCourse = {
@@ -63,6 +125,7 @@ type ApiPackage = {
   name: string;
   name_ar?: string | null;
   name_en?: string | null;
+  image_url?: string | null;
   courses_count: number;
   courses: ApiCourse[];
 };
@@ -78,15 +141,30 @@ type SubCourseParam = {
 const BASE = 'https://admin.tanamitrain.com';
 const PACKAGES_URL = `${BASE}/api/mobile-app/packages-with-courses`;
 
-/* simple icon chooser by keywords (ar/en) */
-const pickIcon = (title: string): string => {
-  const t = title.toLowerCase();
-  if (t.includes('nlp') || t.includes('البرمجة اللغوية') || t.includes('العقل')) return 'lightbulb';
-  if (t.includes('تربية') || t.includes('ذوي الاحتياجات') || t.includes('special')) return 'accessible-icon';
-  if (t.includes('تواصل') || t.includes('جسد') || t.includes('لغة') || t.includes('communication')) return 'handshake';
-  if (t.includes('ادارة') || t.includes('الإدارة') || t.includes('موارد') || t.includes('hr')) return 'briefcase';
-  if (t.includes('ابداع') || t.includes('الإبداع')) return 'magic';
-  return 'layer-group';
+const PackageArtwork = ({imageUrl}: {imageUrl?: string | null}) => {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUrl]);
+
+  if (!imageUrl || imageFailed) {
+    return (
+      <ArtworkTile>
+        <CardIcon name="image" />
+      </ArtworkTile>
+    );
+  }
+
+  return (
+    <ArtworkTile>
+      <CardImage
+        source={{uri: imageUrl}}
+        resizeMode="contain"
+        onError={() => setImageFailed(true)}
+      />
+    </ArtworkTile>
+  );
 };
 
 const CoursesScreen: React.FC = () => {
@@ -123,7 +201,7 @@ const CoursesScreen: React.FC = () => {
       packages.map((p) => ({
         id: String(p.id),
         label: (p.name_ar || p.name || p.name_en || '').trim(),
-        icon: pickIcon((p.name_ar || p.name || p.name_en || '')),
+        imageUrl: p.image_url?.trim() || null,
         subCourses: (p.courses || []).map<SubCourseParam>((c) => ({
           id: c.id,
           name: (c.name_ar || c.name || c.name_en || '').trim(),
@@ -140,11 +218,12 @@ const CoursesScreen: React.FC = () => {
       onPress={() =>
         navigation.navigate('SubCourses', {
           title: item.label,
+          packageImageUrl: item.imageUrl,
           subCourses: item.subCourses,
         })
       }
     >
-      <CardIcon name={item.icon} />
+      <PackageArtwork imageUrl={item.imageUrl} />
       <CardLabel numberOfLines={2}>{item.label}</CardLabel>
     </Card>
   );
@@ -152,7 +231,7 @@ const CoursesScreen: React.FC = () => {
   if (loading && !refreshing) {
     return (
       <Container>
-        <AppLoading style={{ backgroundColor: 'transparent' }} />
+        <AppLoading style={{backgroundColor: colors.cream}} />
       </Container>
     );
   }
@@ -164,10 +243,17 @@ const CoursesScreen: React.FC = () => {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        contentContainerStyle={{ paddingBottom: 16 }}
+        ListHeaderComponent={
+          <PageHeader>
+            <PageTitle>الحقائب التدريبية التي تقدمها تنامي ترين</PageTitle>
+            <TitleAccent />
+          </PageHeader>
+        }
+        columnWrapperStyle={styles.columns}
+        contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />}
         ListEmptyComponent={
-          <CardLabel style={{ marginTop: 16 }}>لا توجد حزم متاحة حالياً</CardLabel>
+          <EmptyText>لا توجد حزم متاحة حالياً</EmptyText>
         }
       />
     </Container>

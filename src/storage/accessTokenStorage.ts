@@ -6,22 +6,25 @@ export const ACCESS_TOKEN_USERNAME = 'access_token';
 
 const LEGACY_TOKEN_KEY = 'authToken';
 
-const SECURE_WRITE_OPTIONS: Keychain.SetOptions = {
+// react-native-keychain normalizes options by mutating the supplied object.
+// React Native may freeze that object after it is passed over the native bridge,
+// so each call must receive a new object rather than a reused module constant.
+const getSecureWriteOptions = (): Keychain.SetOptions => ({
   service: ACCESS_TOKEN_SERVICE,
   accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   securityLevel: Keychain.SECURITY_LEVEL.SECURE_SOFTWARE,
   storage: Keychain.STORAGE_TYPE.AES_GCM_NO_AUTH,
-};
+});
 
-const SECURE_READ_OPTIONS: Keychain.GetOptions = {
+const getSecureReadOptions = (): Keychain.GetOptions => ({
   service: ACCESS_TOKEN_SERVICE,
-};
+});
 
 async function writeSecureToken(token: string): Promise<void> {
   const result = await Keychain.setGenericPassword(
     ACCESS_TOKEN_USERNAME,
     token,
-    SECURE_WRITE_OPTIONS,
+    getSecureWriteOptions(),
   );
 
   if (!result) {
@@ -36,7 +39,7 @@ async function writeSecureToken(token: string): Promise<void> {
  * secure write.
  */
 export async function getAccessToken(): Promise<string | null> {
-  const credentials = await Keychain.getGenericPassword(SECURE_READ_OPTIONS);
+  const credentials = await Keychain.getGenericPassword(getSecureReadOptions());
 
   if (credentials) {
     if (

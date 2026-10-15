@@ -54,6 +54,22 @@ const BASE = 'https://admin.tanamitrain.com';
 const SLIDERS_URL = `${BASE}/api/mobile-app/sliders`;
 const ACTIVITIES_URL = `${BASE}/api/mobile-app/activities`;
 
+const logHomeCourseUrls = (activities: any[]) => {
+  if (!__DEV__) return;
+
+  console.log(
+    '[HomeScreen] course URLs',
+    activities.map(activity => ({
+      id: activity.id,
+      title: activity.course_name ?? activity.course?.name_ar ?? null,
+      image_url: activity.image_url ?? null,
+      resolved_image_url: resolveMediaUrl(activity.image_url) || null,
+      live_url: activity.live_url ?? activity.activity?.live_url ?? null,
+      course_url: activity.course_url ?? activity.url ?? activity.course?.url ?? null,
+    })),
+  );
+};
+
 type SliderItem = { id: string; image: string; link?: string; title?: string; subtitle?: string; cta?: string };
 type CourseBucketKey = 'current' | 'upcoming';
 type HomeExternalLink = {
@@ -413,9 +429,16 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const [slidersResponse, activitiesResponse] = await Promise.all([fetch(SLIDERS_URL), fetch(ACTIVITIES_URL)]);
+      if (__DEV__) {
+        console.log('[HomeScreen] API responses', {
+          sliders: { url: SLIDERS_URL, status: slidersResponse.status, ok: slidersResponse.ok },
+          activities: { url: ACTIVITIES_URL, status: activitiesResponse.status, ok: activitiesResponse.ok },
+        });
+      }
       const slidersJson = await slidersResponse.json();
-      console.log(slidersJson);
       const activitiesJson = await activitiesResponse.json();
+
+      logHomeCourseUrls(Array.isArray(activitiesJson) ? activitiesJson : []);
 
       const mappedSliders = slidersJson
         .map((slider: any) => {
@@ -472,7 +495,12 @@ export default function HomeScreen() {
 
       setSliderItems(mappedSliders);
       setCourses(nextCourses);
-    } catch {
+    } catch (error) {
+      if (__DEV__) {
+        console.log('[HomeScreen] fetch failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       Alert.alert('خطأ في تحميل البيانات', 'تأكد من الاتصال وحاول مجددًا.');
     } finally {
       setLoading(false);
@@ -544,7 +572,19 @@ export default function HomeScreen() {
             </RadarPill>
           </RadarBadges>
           {item.image ? (
-            <RadarImageBg source={{ uri: item.image }} resizeMode="cover">
+            <RadarImageBg
+              source={{ uri: item.image }}
+              resizeMode="cover"
+              onError={event => {
+                if (__DEV__) {
+                  console.log('[HomeScreen] course image failed', {
+                    id: item.id,
+                    url: item.image,
+                    error: event.nativeEvent.error,
+                  });
+                }
+              }}
+            >
               <LinearGradient
                 colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.04)', 'rgba(0,0,0,0.2)']}
                 style={{ flex: 1 }}
@@ -692,7 +732,20 @@ export default function HomeScreen() {
                 }
               }}
             >
-              <SlideBg source={{ uri: item.image }} resizeMode="contain" h={heroHeight}>
+              <SlideBg
+                source={{ uri: item.image }}
+                resizeMode="contain"
+                h={heroHeight}
+                onError={event => {
+                  if (__DEV__) {
+                    console.log('[HomeScreen] slider image failed', {
+                      id: item.id,
+                      url: item.image,
+                      error: event.nativeEvent.error,
+                    });
+                  }
+                }}
+              >
                 <LinearGradient
                   colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.03)', 'rgba(0,0,0,0.16)']}
                   style={{ flex: 1 }}

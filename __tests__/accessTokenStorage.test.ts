@@ -75,6 +75,18 @@ describe('accessTokenStorage', () => {
     expect(mockedAsyncStorage.removeItem).not.toHaveBeenCalled();
   });
 
+  it('uses fresh keychain options for consecutive secure reads', async () => {
+    await getAccessToken();
+    await getAccessToken();
+
+    const firstOptions = mockedKeychain.getGenericPassword.mock.calls[0][0];
+    const secondOptions = mockedKeychain.getGenericPassword.mock.calls[1][0];
+
+    expect(firstOptions).toEqual({service: ACCESS_TOKEN_SERVICE});
+    expect(secondOptions).toEqual({service: ACCESS_TOKEN_SERVICE});
+    expect(secondOptions).not.toBe(firstOptions);
+  });
+
   it('migrates a legacy token securely before removing the plaintext', async () => {
     mockedAsyncStorage.getItem.mockResolvedValue('legacy-token');
 
