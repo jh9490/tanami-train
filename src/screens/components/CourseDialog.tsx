@@ -12,12 +12,16 @@ import {
   View,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import { TANAMI_WHATSAPP_URL } from '../../constants/contact';
 import { api, ApiError } from '../../services/api';
 import {
   canRequestOnlineRegistration,
   canRequestCourseRegistration,
+  isInitiativeRegistrationBlocked,
   registrationErrorMessage,
 } from '../../util/courseRegistration';
+import { openLinkSafe } from '../../util/Linker';
 import {
   buildRegistrationPricingMessage,
   formatFee,
@@ -58,6 +62,11 @@ type BaseProps = {
 };
 
 type Tabs = 'head' | 'details' | 'register';
+
+type InitiativeBlock = {
+  message: string;
+  showWhatsapp: boolean;
+};
 
 type Props = BaseProps & {
   /** Control which tabs to show. Defaults to all (incl. register if authenticated). */
@@ -126,6 +135,7 @@ export default function CourseDialog({
   const [mode, setMode] = useState<'onsite' | 'online'>('onsite');
   const [certificateRequested, setCertificateRequested] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [initiativeBlock, setInitiativeBlock] = useState<InitiativeBlock | null>(null);
 
   const c = course;
   const activityType = c?.activityType ?? 'course';
@@ -168,6 +178,7 @@ export default function CourseDialog({
     setMode('onsite');
     setCertificateRequested(false);
     setOnlineRejected(false);
+    setInitiativeBlock(null);
   // Reset the dialog for each newly opened course. The enabled tab list is
   // supplied declaratively by the caller and does not need to trigger a reset.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,6 +245,18 @@ export default function CourseDialog({
         onClose();
       }
     } catch (e: any) {
+      if (isInitiativeRegistrationBlocked(e, isInitiative)) {
+        const details = e instanceof ApiError ? e.details : undefined;
+        setInitiativeBlock({
+          message:
+            details?.message_ar ||
+            (e instanceof Error ? e.message : '') ||
+            registrationErrorMessage(e),
+          showWhatsapp:
+            details?.show_whatsapp === true || details?.contact_action === 'whatsapp',
+        });
+        return;
+      }
       if (e instanceof ApiError) {
         if (e.status === 401 || e.code === 'unauthorized') {
           await onUnauthorized?.();
@@ -260,6 +283,7 @@ export default function CourseDialog({
       activityType,
       activityFee: c.cost ?? null,
       certificateFee: c.certificateCost ?? null,
+      certificateRequested,
     });
     const certificateChoice = isInitiative
       ? `\n${certificateRequested ? 'تم اختيار طلب شهادة.' : 'لم يتم اختيار طلب شهادة.'}`
@@ -551,6 +575,7 @@ export default function CourseDialog({
                         activityType,
                         activityFee: c.cost ?? null,
                         certificateFee: c.certificateCost ?? null,
+                        certificateRequested,
                       })}
                     </Text>
 
@@ -737,6 +762,84 @@ export default function CourseDialog({
                 <Text style={{ color: '#eceadf', fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 }}>إغلاق</Text>
               </TouchableOpacity>
             </View>
+
+            {initiativeBlock && (
+              <View
+                testID="initiative-registration-blocked-dialog"
+                accessibilityViewIsModal
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0,
+                  backgroundColor: 'rgba(0,0,0,0.55)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 22,
+                  zIndex: 20,
+                }}
+              >
+                <View
+                  style={{
+                    width: '100%',
+                    maxWidth: 360,
+                    backgroundColor: '#fff1e2',
+                    borderRadius: 18,
+                    padding: 20,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#0f4f30',
+                      fontFamily: 'NotoKufiArabic-Bold',
+                      fontSize: 14,
+                      lineHeight: 25,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {initiativeBlock.message}
+                  </Text>
+                  {initiativeBlock.showWhatsapp && (
+                    <TouchableOpacity
+                      testID="initiative-registration-whatsapp-button"
+                      accessibilityRole="button"
+                      accessibilityLabel="تواصل عبر واتساب"
+                      onPress={() => openLinkSafe(TANAMI_WHATSAPP_URL)}
+                      style={{
+                        marginTop: 18,
+                        minWidth: 210,
+                        minHeight: 46,
+                        borderRadius: 12,
+                        backgroundColor: '#25D366',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 9,
+                        paddingHorizontal: 16,
+                      }}
+                    >
+                      <Icon name="whatsapp" size={22} color="#fff" />
+                      <Text style={{ color: '#fff', fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 }}>
+                        تواصل عبر واتساب
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    testID="initiative-registration-blocked-close"
+                    accessibilityRole="button"
+                    accessibilityLabel="إغلاق"
+                    onPress={() => setInitiativeBlock(null)}
+                    style={{ marginTop: 14, paddingVertical: 8, paddingHorizontal: 24 }}
+                  >
+                    <Text style={{ color: '#0f4f30', fontFamily: 'NotoKufiArabic-Bold', fontSize: 12 }}>
+                      إغلاق
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </View>

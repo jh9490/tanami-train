@@ -11,6 +11,8 @@ describe('activity pricing', () => {
     expect(normalizeActivityType('INITIATIVE')).toBe('initiative');
     expect(normalizeActivityType(undefined)).toBe('course');
     expect(normalizeActivityType(2)).toBe('course');
+    expect(normalizeActivityType(undefined, 2)).toBe('initiative');
+    expect(normalizeActivityType('course', 1)).toBe('course');
   });
 
   it('handles missing and numeric API fees safely', () => {
@@ -41,6 +43,19 @@ describe('activity pricing', () => {
 
     expect(message).toContain('رسوم التسجيل');
     expect(message).not.toContain('رسوم الشهادة');
+  });
+
+  it('hides certificate pricing guidance when an initiative certificate is not selected', () => {
+    const message = buildRegistrationPricingMessage({
+      activityType: 'initiative',
+      activityFee: 0,
+      certificateFee: 2000,
+      certificateRequested: false,
+    });
+
+    expect(message).toBe('رسوم التسجيل: 0');
+    expect(message).not.toContain('رسوم الشهادة');
+    expect(message).not.toContain(getPricingLabels('ar').separatePayment);
   });
 
   it('provides English pricing labels and guidance', () => {

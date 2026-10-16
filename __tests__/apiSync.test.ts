@@ -96,6 +96,32 @@ describe('mobile synchronization API', () => {
     });
   });
 
+  it('preserves initiative block contact details from a 403 response', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(403, {
+        ok: false,
+        error: 'initiative_registration_blocked',
+        message: 'blocked',
+        message_ar: 'رسالة الحظر',
+        contact_action: 'whatsapp',
+        show_whatsapp: true,
+      }),
+    );
+
+    await expect(api.registerForActivity('token-123', 1462)).rejects.toMatchObject<
+      Partial<ApiError>
+    >({
+      code: 'initiative_registration_blocked',
+      status: 403,
+      message: 'blocked',
+      details: {
+        message_ar: 'رسالة الحظر',
+        contact_action: 'whatsapp',
+        show_whatsapp: true,
+      },
+    });
+  });
+
   it('refreshes activity registration state with the activity ID', async () => {
     fetchMock.mockResolvedValue(
       jsonResponse(200, { activity: { id: 30, registration_open: true } }),

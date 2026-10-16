@@ -10,6 +10,8 @@ export const canRequestOnlineRegistration = (live: unknown): boolean =>
   isLiveActivity(live);
 
 const REGISTRATION_ERROR_MESSAGES: Record<string, string> = {
+  initiative_registration_blocked:
+    'عذراً، لا يمكنك التسجيل بكورسات المبادرة، بإمكانك التواصل عبر واتساب.',
   activity_not_found: 'لم يعد هذا النشاط متاحًا.',
   activity_not_open_for_registration: 'التسجيل غير متاح بعد بدء النشاط',
   online_registration_unavailable: 'التسجيل أونلاين غير متاح لهذا النشاط. اختر الحضور المباشر.',
@@ -18,6 +20,18 @@ const REGISTRATION_ERROR_MESSAGES: Record<string, string> = {
   save_failed: 'تعذر حفظ طلب التسجيل. يرجى المحاولة مرة أخرى.',
   unauthorized: 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.',
 };
+
+export const INITIATIVE_REGISTRATION_BLOCKED = 'initiative_registration_blocked';
+
+export const isInitiativeRegistrationBlocked = (
+  error: unknown,
+  isInitiative: boolean,
+): boolean =>
+  isInitiative &&
+  !!error &&
+  typeof error === 'object' &&
+  'code' in error &&
+  error.code === INITIATIVE_REGISTRATION_BLOCKED;
 
 export const registrationErrorMessage = (error: unknown): string => {
   const code =

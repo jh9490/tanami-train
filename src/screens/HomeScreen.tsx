@@ -482,7 +482,10 @@ export default function HomeScreen() {
           endDate: activity.end_date ?? null,
           live: isLiveActivity(activity.live),
           cost: normalizeFee(activity.cost ?? activity.pricing?.activity_fee ?? activity.course?.cost),
-          activityType: normalizeActivityType(activity.activity_type),
+          activityType: normalizeActivityType(
+            activity.activity_type,
+            activity.activity_type_id,
+          ),
           certificateCost: normalizeFee(
             activity.certificate_cost ?? activity.pricing?.certificate_fee,
           ),

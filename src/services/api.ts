@@ -83,6 +83,11 @@ export class ApiError extends Error {
     public readonly code: string,
     public readonly status: number,
     message?: string,
+    public readonly details?: {
+      message_ar?: string;
+      contact_action?: string;
+      show_whatsapp?: boolean;
+    },
   ) {
     super(message || code);
     this.name = 'ApiError';
@@ -116,7 +121,11 @@ async function request<T>(
 
     if (!res.ok || (json && json.ok === false)) {
       const code = json?.error ?? json?.message ?? `HTTP_${res.status}`;
-      throw new ApiError(code, res.status, json?.message ?? code);
+      throw new ApiError(code, res.status, json?.message ?? code, {
+        message_ar: json?.message_ar,
+        contact_action: json?.contact_action,
+        show_whatsapp: json?.show_whatsapp,
+      });
     }
     return json as T;
   } catch (e: any) {

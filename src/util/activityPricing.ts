@@ -5,10 +5,11 @@ export type ActivityPricing = {
   activityType: ActivityType;
   activityFee: number | null;
   certificateFee: number | null;
+  certificateRequested?: boolean;
 };
 
-export const normalizeActivityType = (value: unknown): ActivityType =>
-  typeof value === 'string' && value.toLowerCase() === 'initiative'
+export const normalizeActivityType = (value: unknown, typeId?: unknown): ActivityType =>
+  (typeof value === 'string' && value.toLowerCase() === 'initiative') || Number(typeId) === 2
     ? 'initiative'
     : 'course';
 
@@ -51,7 +52,7 @@ export const buildRegistrationPricingMessage = (
   const labels = getPricingLabels(locale);
   const lines = [`${labels.activityFee}: ${formatFee(pricing.activityFee, locale)}`];
 
-  if (pricing.activityType === 'initiative') {
+  if (pricing.activityType === 'initiative' && pricing.certificateRequested !== false) {
     lines.push(`${labels.certificateFee}: ${formatFee(pricing.certificateFee, locale)}`);
     lines.push(pricing.activityFee === 0 ? labels.separatePayment : labels.paidAttendance);
   }

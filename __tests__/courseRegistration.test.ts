@@ -1,6 +1,7 @@
 import {
   canRequestOnlineRegistration,
   canRequestCourseRegistration,
+  isInitiativeRegistrationBlocked,
   isLiveActivity,
   registrationErrorMessage,
 } from '../src/util/courseRegistration';
@@ -32,6 +33,7 @@ describe('course registration eligibility', () => {
   });
 
   it.each([
+    ['initiative_registration_blocked', 'عذراً، لا يمكنك التسجيل بكورسات المبادرة، بإمكانك التواصل عبر واتساب.'],
     ['activity_not_found', 'لم يعد هذا النشاط متاحًا.'],
     ['activity_not_open_for_registration', 'التسجيل غير متاح بعد بدء النشاط\nRegistration is unavailable after the activity has started.'],
     ['online_registration_unavailable', 'التسجيل أونلاين غير متاح لهذا النشاط. اختر الحضور المباشر.'],
@@ -41,5 +43,11 @@ describe('course registration eligibility', () => {
     ['unauthorized', 'انتهت صلاحية الجلسة. يرجى تسجيل الدخول مجددًا.'],
   ])('maps %s to an Arabic validation message', (code, expected) => {
     expect(registrationErrorMessage(new Error(code))).toBe(expected);
+  });
+
+  it('scopes the initiative block to initiative activities', () => {
+    const error = { code: 'initiative_registration_blocked' };
+    expect(isInitiativeRegistrationBlocked(error, true)).toBe(true);
+    expect(isInitiativeRegistrationBlocked(error, false)).toBe(false);
   });
 });
